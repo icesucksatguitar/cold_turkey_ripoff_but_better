@@ -38,122 +38,122 @@ export const ActivityLogPage: React.FC<ActivityLogProps> = ({ logs, onClearLogs 
   const getLogIcon = (type: ActivityLogType['type']) => {
     switch (type) {
       case 'app_blocked':
-        return <ShieldAlert size={14} className="text-amber-400" />;
+        return <ShieldAlert size={14} className="text-white" />;
       case 'session_start':
-        return <PlayCircle size={14} className="text-sky-400" />;
+        return <PlayCircle size={14} className="text-white" />;
       case 'session_end':
-        return <CheckCircle size={14} className="text-emerald-400" />;
+        return <CheckCircle size={14} className="text-white" />;
       case 'schedule_trigger':
-        return <Calendar size={14} className="text-indigo-400" />;
+        return <Calendar size={14} className="text-white" />;
       case 'emergency_unlock':
-        return <AlertTriangle size={14} className="text-rose-400" />;
+        return <AlertTriangle size={14} className="text-white" />;
       default:
-        return <Info size={14} className="text-slate-400" />;
+        return <Info size={14} className="text-zinc-400" />;
     }
   };
 
   const formatTimestamp = (ts: number) => {
     const d = new Date(ts);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
+    return (
+      d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
       ' • ' +
-      d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+    );
   };
 
   return (
-    <div className="p-6 space-y-5 overflow-y-auto h-full">
+    <div className="p-6 space-y-6 overflow-y-auto h-full bg-black text-white select-none">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2.5">
-            <Activity className="text-sky-400" size={22} />
-            Activity & Audit Log
+          <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">
+            Audit Trail
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white mt-1 flex items-center gap-2.5">
+            <Activity className="text-white" size={24} />
+            Activity & Security Logs
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Local forensic record of blocked processes, completed sessions, and schedule triggers.
+          <p className="text-xs text-zinc-400 mt-1">
+            Local event telemetry documenting every intercepted launch and focus event.
           </p>
         </div>
 
         {logs.length > 0 && (
-          <button
-            onClick={onClearLogs}
-            className="btn-secondary text-xs text-rose-400 hover:text-rose-300"
-          >
+          <button onClick={onClearLogs} className="btn-secondary text-xs">
             <Trash2 size={13} />
-            Clear Log History
+            <span>Clear History</span>
           </button>
         )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-72">
-          <Search size={14} className="absolute left-3 top-3 text-slate-400" />
+      {/* Filter and Search */}
+      <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full md:w-80">
+          <Search size={14} className="absolute left-3.5 top-3 text-zinc-500" />
           <input
             type="text"
-            placeholder="Search activity records..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="input-field pl-9 text-xs"
+            placeholder="Search event logs..."
+            className="input-field pl-9"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+        <div className="flex items-center gap-1.5 p-1 rounded-lg bg-zinc-950 border border-white/10 w-full md:w-auto">
           {[
             { id: 'all', label: 'All Events' },
             { id: 'blocked', label: 'Interceptions' },
             { id: 'sessions', label: 'Sessions' },
-            { id: 'system', label: 'System & Schedules' },
-          ].map((tab) => (
+            { id: 'system', label: 'System' },
+          ].map((f) => (
             <button
-              key={tab.id}
-              onClick={() => setFilterType(tab.id)}
-              className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                filterType === tab.id
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                  : 'bg-white/5 text-slate-400 hover:text-slate-200 border border-transparent'
+              key={f.id}
+              onClick={() => setFilterType(f.id)}
+              className={`px-3 py-1.5 rounded text-xs font-mono uppercase transition-colors ${
+                filterType === f.id
+                  ? 'bg-white text-black font-bold'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
-              {tab.label}
+              {f.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Logs Feed */}
-      <div className="glass-panel overflow-hidden">
+      {/* Logs Table / List */}
+      <div className="space-y-2">
         {filteredLogs.length === 0 ? (
-          <div className="p-10 text-center space-y-2">
-            <Activity size={32} className="mx-auto text-slate-600" />
-            <p className="text-sm font-semibold text-slate-300">No activity logged</p>
-            <p className="text-xs text-slate-500">
-              When an application is intercepted or a focus session runs, events will appear here.
-            </p>
+          <div className="p-12 text-center rounded-xl bg-zinc-950 border border-white/10">
+            <Activity size={36} className="mx-auto text-zinc-600 mb-3" />
+            <p className="text-sm font-semibold text-white">No activity records found</p>
+            <p className="text-xs text-zinc-500 mt-1">Events will appear here as distractions are blocked.</p>
           </div>
         ) : (
-          <div className="divide-y divide-white/5 max-h-[520px] overflow-y-auto">
-            {filteredLogs.map((log) => (
-              <div
-                key={log.id}
-                className="p-3.5 hover:bg-white/[0.02] flex items-start gap-3 transition-colors"
-              >
-                <div className="mt-0.5 w-7 h-7 rounded-lg bg-slate-900 border border-white/10 flex items-center justify-center shrink-0">
-                  {getLogIcon(log.type)}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-xs text-slate-200">{log.target}</span>
-                    <span className="font-mono text-[10px] text-slate-500 shrink-0">
-                      {formatTimestamp(log.timestamp)}
+          filteredLogs.map((log) => (
+            <div
+              key={log.id}
+              className="p-3.5 rounded-xl bg-zinc-950 border border-white/5 hover:border-white/15 transition-all flex items-start gap-3.5"
+            >
+              <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center shrink-0 mt-0.5">
+                {getLogIcon(log.type)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-white truncate">{log.target}</span>
+                    <span className="badge badge-idle">
+                      {log.type.replace('_', ' ')}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5 leading-relaxed break-words">
-                    {log.details}
-                  </p>
+                  <span className="text-[11px] font-mono text-zinc-500 shrink-0">
+                    {formatTimestamp(log.timestamp)}
+                  </span>
                 </div>
+                <p className="text-xs text-zinc-400 mt-1 font-mono break-all">{log.details}</p>
               </div>
-            ))}
-          </div>
+            </div>
+          ))
         )}
       </div>
     </div>

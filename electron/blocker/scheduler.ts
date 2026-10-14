@@ -48,8 +48,11 @@ export class Scheduler {
         await this.enforceSessionStart(active);
       }
     } else {
-      // Ensure no leftover hosts block if no active session
-      if (this.webBlocker.isBlockActiveInHosts()) {
+      // Re-apply enabled websites on startup for 24/7 protection
+      const enabledWebsites = data.websites.filter((w) => w.enabled);
+      if (enabledWebsites.length > 0) {
+        await this.webBlocker.applyBlock(data.websites);
+      } else if (this.webBlocker.isBlockActiveInHosts()) {
         await this.webBlocker.removeBlock();
       }
     }
@@ -318,8 +321,20 @@ export class Scheduler {
   }
 
   private async enforceSessionStop(): Promise<void> {
-    this.appBlocker.stop();
-    await this.webBlocker.removeBlock();
+    const data = this.store.getData();
+    const hasBlockedApps = data.apps.some((a) => a.enabled);
+    if (hasBlockedApps) {
+      this.appBlocker.start(data.settings.appBlockIntervalMs || 800);
+    } else {
+      this.appBlocker.stop();
+    }
+
+    const enabledWebsites = data.websites.filter((w) => w.enabled);
+    if (enabledWebsites.length > 0) {
+      await this.webBlocker.applyBlock(data.websites);
+    } else {
+      await this.webBlocker.removeBlock();
+    }
   }
 
   public getActiveSession(): ActiveSession | null {

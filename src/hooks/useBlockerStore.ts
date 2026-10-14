@@ -176,6 +176,28 @@ export function useBlockerStore() {
     showToast('Domain removed from block list.');
   };
 
+  const blockAllWebsites = async () => {
+    await updateData((prev) => ({
+      ...prev,
+      websites: prev.websites.map((w) => ({ ...w, enabled: true })),
+    }));
+    if (window.focusGuardApi && window.focusGuardApi.applyHostsBlock) {
+      window.focusGuardApi.applyHostsBlock().catch(() => {});
+    }
+    showToast('Blocked all websites in list.');
+  };
+
+  const unblockAllWebsites = async () => {
+    await updateData((prev) => ({
+      ...prev,
+      websites: prev.websites.map((w) => ({ ...w, enabled: false })),
+    }));
+    if (window.focusGuardApi && window.focusGuardApi.restoreHosts) {
+      window.focusGuardApi.restoreHosts().catch(() => {});
+    }
+    showToast('Unblocked all websites.');
+  };
+
   // App operations
   const addApp = async (name: string, executableName: string, path?: string) => {
     let cleanExe = executableName.trim();
@@ -216,6 +238,55 @@ export function useBlockerStore() {
       apps: prev.apps.filter((a) => a.id !== id),
     }));
     showToast('Application removed from block list.');
+  };
+
+  const blockAllApps = async (appsToBlock: Array<{ name: string; executableName: string; path?: string }>) => {
+    await updateData((prev) => {
+      const existingMap = new Map(prev.apps.map((a) => [a.executableName.toLowerCase().trim(), a]));
+      const updatedApps: BlockedApp[] = [...prev.apps];
+
+      for (const item of appsToBlock) {
+        let cleanExe = item.executableName.trim();
+        if (!cleanExe) continue;
+        if (!cleanExe.toLowerCase().endsWith('.exe')) cleanExe = `${cleanExe}.exe`;
+        const key = cleanExe.toLowerCase();
+
+        const existing = existingMap.get(key);
+        if (existing) {
+          existing.enabled = true;
+        } else {
+          const newApp: BlockedApp = {
+            id: `app-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            name: item.name || cleanExe.replace(/\.exe$/i, ''),
+            executableName: cleanExe,
+            path: item.path,
+            enabled: true,
+            createdAt: Date.now(),
+          };
+          updatedApps.push(newApp);
+          existingMap.set(key, newApp);
+        }
+      }
+
+      return { ...prev, apps: updatedApps };
+    });
+
+    // Terminate any active running instances immediately
+    if (window.focusGuardApi && window.focusGuardApi.killApp) {
+      for (const item of appsToBlock) {
+        window.focusGuardApi.killApp(item.executableName).catch(() => {});
+      }
+    }
+
+    showToast(`Blocked all ${appsToBlock.length} applications and terminated running tasks.`);
+  };
+
+  const unblockAllApps = async () => {
+    await updateData((prev) => ({
+      ...prev,
+      apps: prev.apps.map((a) => ({ ...a, enabled: false })),
+    }));
+    showToast('Unblocked all applications.');
   };
 
   // Schedules operations
@@ -334,9 +405,13 @@ export function useBlockerStore() {
     addWebsite,
     toggleWebsite,
     removeWebsite,
+    blockAllWebsites,
+    unblockAllWebsites,
     addApp,
     toggleApp,
     removeApp,
+    blockAllApps,
+    unblockAllApps,
     addSchedule,
     toggleSchedule,
     removeSchedule,

@@ -103,56 +103,47 @@ export const Dashboard: React.FC<DashboardProps> = ({
   ).length;
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full">
+    <div className="p-6 space-y-6 overflow-y-auto h-full bg-black text-white select-none">
       {/* Top Banner / Hero Card */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900/90 via-slate-900/60 to-slate-950 p-6 border border-white/10 shadow-xl">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-sky-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
-        <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
+      <div className="relative overflow-hidden rounded-2xl bg-zinc-950 p-6 border border-white/15 shadow-2xl">
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
           {/* Circular Countdown Display */}
           <div className="flex flex-col items-center">
             <div className="relative w-52 h-52 flex items-center justify-center">
-              {/* SVG Ring */}
+              {/* SVG Ring (Pure Monochromatic) */}
               <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 100 100">
                 <circle
                   cx="50"
                   cy="50"
                   r="42"
-                  className="stroke-slate-800"
-                  strokeWidth="5"
+                  stroke="rgba(255, 255, 255, 0.08)"
+                  strokeWidth="4"
                   fill="transparent"
                 />
                 <circle
                   cx="50"
                   cy="50"
                   r="42"
-                  className="transition-all duration-1000 ease-linear"
-                  stroke="url(#timerGradient)"
-                  strokeWidth="5"
+                  className="transition-all duration-1000 ease-linear timer-glow"
+                  stroke="#ffffff"
+                  strokeWidth="4.5"
                   strokeDasharray={264}
                   strokeDashoffset={264 - (264 * progressPercent) / 100}
                   strokeLinecap="round"
                   fill="transparent"
                 />
-                <defs>
-                  <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#38bdf8" />
-                    <stop offset="100%" stopColor="#6366f1" />
-                  </linearGradient>
-                </defs>
               </svg>
 
               {/* Inside Digital Timer */}
               <div className="absolute flex flex-col items-center text-center">
-                <span className="font-mono text-3xl font-bold tracking-tight text-white drop-shadow">
+                <span className="font-mono text-4xl font-extrabold tracking-tight text-white">
                   {isFocusing ? formatTime(remainingSeconds) : '00:00'}
                 </span>
-                <span className="text-[11px] font-semibold tracking-wider text-slate-400 mt-0.5 uppercase">
-                  {isFocusing ? (isPaused ? 'PAUSED' : session.name) : 'READY'}
+                <span className="text-[10px] font-mono font-bold tracking-widest text-zinc-400 mt-1 uppercase">
+                  {isFocusing ? (isPaused ? 'PAUSED' : session.name) : 'STANDBY'}
                 </span>
                 {isStrict && (
-                  <span className="mt-1 flex items-center gap-1 text-[10px] text-rose-400 font-semibold px-2 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30">
+                  <span className="mt-1 flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-white text-black">
                     <Lock size={9} />
                     STRICT
                   </span>
@@ -170,7 +161,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       className="btn-secondary text-xs"
                       title={isPaused ? 'Resume' : 'Pause'}
                     >
-                      {isPaused ? <Play size={14} className="text-emerald-400" /> : <Pause size={14} />}
+                      {isPaused ? <Play size={13} fill="currentColor" /> : <Pause size={13} />}
                       {isPaused ? 'Resume' : 'Pause'}
                     </button>
                   )}
@@ -195,33 +186,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       preset: 'Deep Work',
                     })
                   }
-                  className="btn-primary text-xs"
+                  className="btn-primary"
                 >
-                  <Play size={14} fill="currentColor" />
-                  Start 50m Deep Work
+                  <Play size={13} fill="currentColor" />
+                  <span>Start 50m Deep Work</span>
                 </button>
               )}
             </div>
           </div>
 
           {/* Quick Presets / Overview */}
-          <div className="flex-1 w-full space-y-4">
+          <div className="flex-1 w-full space-y-3.5">
             <div>
-              <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <Zap size={18} className="text-sky-400" />
+              <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-zinc-500">
+                Focus Engine
+              </div>
+              <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2 mt-0.5">
+                <Zap size={18} className="text-white" />
                 Quick Focus Presets
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                One-click local distraction blocking for your flow state.
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Immediate system-wide app and website restriction for uninterrupted flow.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
               {[
                 { name: 'Pomodoro Sprint', mins: 25, strict: 'none' as StrictModeLevel, desc: 'Casual sprint with break' },
-                { name: 'Deep Work Flow', mins: 50, strict: 'locked' as StrictModeLevel, desc: 'Locked focus session' },
-                { name: 'Study Marathon', mins: 90, strict: 'locked' as StrictModeLevel, desc: 'Extended study block' },
-                { name: 'Iron Discipline', mins: 120, strict: 'extreme' as StrictModeLevel, desc: 'Extreme verification lock' },
+                { name: 'Deep Work Flow', mins: 50, strict: 'locked' as StrictModeLevel, desc: 'Locked focus block' },
+                { name: 'Study Marathon', mins: 90, strict: 'locked' as StrictModeLevel, desc: 'Extended focus block' },
+                { name: 'Iron Discipline', mins: 120, strict: 'extreme' as StrictModeLevel, desc: 'Strict verification lock' },
               ].map((preset) => (
                 <div
                   key={preset.name}
@@ -237,17 +231,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       });
                     }
                   }}
-                  className={`p-3 rounded-xl border transition-all ${
+                  className={`p-3.5 rounded-xl border transition-all ${
                     isFocusing
-                      ? 'opacity-50 cursor-not-allowed bg-slate-900/40 border-white/5'
-                      : 'glass-card-interactive border-white/5 hover:border-sky-500/40'
+                      ? 'opacity-40 cursor-not-allowed bg-zinc-950 border-white/5'
+                      : 'bg-zinc-950 border-white/10 hover:border-white/40 hover:bg-zinc-900 cursor-pointer shadow-sm'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-xs text-slate-200">{preset.name}</span>
-                    <span className="font-mono text-xs text-sky-400 font-bold">{preset.mins}m</span>
+                    <span className="font-semibold text-xs text-white">{preset.name}</span>
+                    <span className="font-mono text-xs text-white font-bold">{preset.mins}m</span>
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-1">{preset.desc}</div>
+                  <div className="text-[11px] text-zinc-500 mt-1">{preset.desc}</div>
                 </div>
               ))}
             </div>
@@ -255,171 +249,135 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5">
-        <div
-          onClick={() => onNavigateTab('websites')}
-          className="glass-card-interactive p-4 flex items-center justify-between"
-        >
-          <div>
-            <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
-              Blocked Domains
-            </div>
-            <div className="text-2xl font-bold text-slate-100 mt-1">
-              {data.websites.filter((w) => w.enabled).length}
-            </div>
-            <div className="text-[11px] text-slate-500 mt-0.5">
-              {data.websites.length} configured
-            </div>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
-            <Globe size={18} />
-          </div>
-        </div>
-
+      {/* Metrics Row (Monochrome) */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div
           onClick={() => onNavigateTab('apps')}
-          className="glass-card-interactive p-4 flex items-center justify-between"
+          className="p-4 rounded-xl bg-zinc-950 border border-white/10 hover:border-white/30 cursor-pointer transition-all flex items-center justify-between"
         >
           <div>
-            <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+            <div className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
               Blocked Apps
             </div>
-            <div className="text-2xl font-bold text-slate-100 mt-1">
+            <div className="text-2xl font-mono font-bold text-white mt-1">
               {data.apps.filter((a) => a.enabled).length}
             </div>
-            <div className="text-[11px] text-slate-500 mt-0.5">
+            <div className="text-[11px] text-zinc-500 mt-0.5">
               {data.apps.length} configured
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center text-white">
             <AppWindow size={18} />
           </div>
         </div>
 
         <div
-          onClick={() => onNavigateTab('schedules')}
-          className="glass-card-interactive p-4 flex items-center justify-between"
+          onClick={() => onNavigateTab('websites')}
+          className="p-4 rounded-xl bg-zinc-950 border border-white/10 hover:border-white/30 cursor-pointer transition-all flex items-center justify-between"
         >
           <div>
-            <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+            <div className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
+              Blocked Domains
+            </div>
+            <div className="text-2xl font-mono font-bold text-white mt-1">
+              {data.websites.filter((w) => w.enabled).length}
+            </div>
+            <div className="text-[11px] text-zinc-500 mt-0.5">
+              {data.websites.length} configured
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center text-white">
+            <Globe size={18} />
+          </div>
+        </div>
+
+        <div
+          onClick={() => onNavigateTab('schedules')}
+          className="p-4 rounded-xl bg-zinc-950 border border-white/10 hover:border-white/30 cursor-pointer transition-all flex items-center justify-between"
+        >
+          <div>
+            <div className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
               Active Schedules
             </div>
-            <div className="text-2xl font-bold text-slate-100 mt-1">
+            <div className="text-2xl font-mono font-bold text-white mt-1">
               {data.schedules.filter((s) => s.enabled).length}
             </div>
-            <div className="text-[11px] text-slate-500 mt-0.5">
+            <div className="text-[11px] text-zinc-500 mt-0.5">
               {data.schedules.length} recurring rules
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center text-white">
             <Calendar size={18} />
           </div>
         </div>
 
         <div
           onClick={() => onNavigateTab('activity')}
-          className="glass-card-interactive p-4 flex items-center justify-between"
+          className="p-4 rounded-xl bg-zinc-950 border border-white/10 hover:border-white/30 cursor-pointer transition-all flex items-center justify-between"
         >
           <div>
-            <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+            <div className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest">
               Interceptions Today
             </div>
-            <div className="text-2xl font-bold text-slate-100 mt-1">
+            <div className="text-2xl font-mono font-bold text-white mt-1">
               {interceptionsToday}
             </div>
-            <div className="text-[11px] text-slate-500 mt-0.5">Apps intercepted</div>
+            <div className="text-[11px] text-zinc-500 mt-0.5">
+              {data.activityLogs.length} total events
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+          <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center text-white">
             <ShieldAlert size={18} />
-          </div>
-        </div>
-      </div>
-
-      {/* Local Architecture & Enforcement Status */}
-      <div className="glass-panel p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Shield size={16} className="text-emerald-400" />
-            <h3 className="text-sm font-semibold text-slate-200">System Integration Status</h3>
-          </div>
-          <span className="badge badge-active text-[10px]">LOCAL ONLY • NO CLOUD</span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-          <div className="p-3 rounded-lg bg-slate-900/50 border border-white/5 space-y-1">
-            <div className="text-slate-400 font-medium">Hosts File Protection</div>
-            <div className="text-slate-200 text-[11px]">
-              {isFocusing && session.blockWebsites
-                ? 'Active (127.0.0.1 loopback isolation)'
-                : 'Clean (no active block rules)'}
-            </div>
-          </div>
-          <div className="p-3 rounded-lg bg-slate-900/50 border border-white/5 space-y-1">
-            <div className="text-slate-400 font-medium">Windows Process Scanner</div>
-            <div className="text-slate-200 text-[11px]">
-              {isFocusing && session.blockApps
-                ? `Active (polling every ${data.settings.appBlockIntervalMs}ms)`
-                : 'Standby'}
-            </div>
-          </div>
-          <div className="p-3 rounded-lg bg-slate-900/50 border border-white/5 space-y-1">
-            <div className="text-slate-400 font-medium">Persistent Configuration</div>
-            <div className="text-slate-200 text-[11px]">
-              Saved locally in %APPDATA%/FocusGuard
-            </div>
           </div>
         </div>
       </div>
 
       {/* Emergency Unlock Modal */}
       {showEmergencyModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="glass-panel max-w-md w-full p-6 space-y-4 border border-rose-500/30 shadow-2xl">
-            <div className="flex items-center gap-3 text-rose-400">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center">
-                <AlertTriangle size={20} />
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-zinc-950 border border-white/20 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-white border-b border-white/10 pb-3">
+              <AlertTriangle size={22} className="text-white" />
               <div>
-                <h3 className="font-bold text-sm text-slate-100">Emergency Strict Mode Unlock</h3>
-                <p className="text-xs text-rose-300">Deliberate pause safeguard</p>
+                <h3 className="font-bold text-base text-white">Strict Session Verification</h3>
+                <p className="text-xs text-zinc-400">Emergency unlock confirmation required.</p>
               </div>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Strict Mode protects you from reflexive distractions. To ensure this cancellation is
-              deliberate, you must type the exact verification phrase below:
+            <p className="text-xs text-zinc-300">
+              To verify and end this focus session early, type the exact verification phrase below:
             </p>
 
-            <div className="p-3 rounded-lg bg-slate-950 border border-rose-500/30 text-center font-mono font-bold text-sm text-sky-400 tracking-wider select-all">
+            <div className="p-3 rounded-lg bg-black border border-white/20 font-mono text-center text-sm font-bold tracking-widest text-white select-all">
               {emergencyPhrase}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-slate-400">Type verification phrase:</label>
-              <input
-                type="text"
-                value={userTypedPhrase}
-                onChange={(e) => {
-                  setUserTypedPhrase(e.target.value);
-                  setEmergencyError('');
-                }}
-                placeholder="Type phrase here..."
-                className="input-field font-mono text-xs"
-                autoFocus
-              />
-              {emergencyError && <p className="text-[11px] text-rose-400">{emergencyError}</p>}
-            </div>
+            <input
+              type="text"
+              value={userTypedPhrase}
+              onChange={(e) => {
+                setUserTypedPhrase(e.target.value);
+                setEmergencyError('');
+              }}
+              placeholder="Type phrase exactly as shown..."
+              className="input-field font-mono text-center tracking-wider"
+              autoFocus
+            />
+
+            {emergencyError && (
+              <p className="text-xs font-mono text-zinc-400">{emergencyError}</p>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setShowEmergencyModal(false)}
                 className="btn-secondary text-xs"
               >
-                Keep Focusing
+                Cancel
               </button>
               <button
                 onClick={handleEmergencyUnlockConfirm}
-                className="btn-danger text-xs"
+                className="btn-primary text-xs"
               >
                 Confirm Unlock
               </button>

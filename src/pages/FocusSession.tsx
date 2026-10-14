@@ -64,204 +64,179 @@ export const FocusSessionPage: React.FC<FocusSessionPageProps> = ({
 
   if (activeSession) {
     return (
-      <div className="p-6 flex flex-col items-center justify-center h-full text-center space-y-6">
-        <div className="w-20 h-20 rounded-3xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 shadow-xl shadow-sky-500/10">
-          <Clock size={36} className="animate-pulse" />
-        </div>
+      <div className="p-6 space-y-6 overflow-y-auto h-full bg-black text-white flex flex-col items-center justify-center select-none">
+        <div className="w-full max-w-lg p-8 rounded-2xl bg-zinc-950 border border-white/20 shadow-2xl text-center space-y-6">
+          <div className="flex items-center justify-center">
+            <div className="w-14 h-14 rounded-2xl bg-white text-black flex items-center justify-center font-bold">
+              <Shield size={28} />
+            </div>
+          </div>
 
-        <div className="space-y-1">
-          <h2 className="text-2xl font-bold text-slate-100">{activeSession.name} in Progress</h2>
-          <p className="text-xs text-slate-400">
-            Session active • Started for {activeSession.durationMinutes} minutes
-          </p>
-        </div>
+          <div>
+            <div className="badge badge-blocked">
+              SESSION ACTIVE
+            </div>
+            <h2 className="text-2xl font-bold text-white mt-2">{activeSession.name}</h2>
+            <p className="text-xs text-zinc-400 mt-1">
+              Active system restriction enabled across your computer.
+            </p>
+          </div>
 
-        <div className="font-mono text-5xl font-bold text-sky-400 tracking-tight">
-          {formatTime(remainingSeconds)}
-        </div>
+          <div className="p-6 rounded-xl bg-black border border-white/10 font-mono text-5xl font-extrabold text-white">
+            {formatTime(remainingSeconds)}
+          </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => onNavigateTab('dashboard')}
-            className="btn-primary text-xs"
-          >
-            Go to Dashboard
-          </button>
+          <div className="grid grid-cols-2 gap-3 text-xs text-zinc-400 font-mono">
+            <div className="p-3 rounded-lg bg-zinc-900 border border-white/5">
+              <span className="text-zinc-500 block text-[10px] uppercase">Strict Enforcement</span>
+              <span className="text-white font-bold">{activeSession.strictMode}</span>
+            </div>
+            <div className="p-3 rounded-lg bg-zinc-900 border border-white/5">
+              <span className="text-zinc-500 block text-[10px] uppercase">Web & App Block</span>
+              <span className="text-white font-bold">Enabled</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button onClick={() => onNavigateTab('dashboard')} className="btn-secondary text-xs">
+              Go to Dashboard
+            </button>
+            <button onClick={onStopSession} className="btn-danger text-xs">
+              End Session
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto h-full max-w-3xl mx-auto">
-      <div>
-        <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2.5">
-          <Clock className="text-sky-400" size={22} />
-          Configure Focus Session
+    <div className="p-6 space-y-6 overflow-y-auto h-full bg-black text-white select-none">
+      {/* Header */}
+      <div className="border-b border-white/10 pb-5">
+        <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">
+          Targeted Session Lock
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-white mt-1 flex items-center gap-2.5">
+          <Clock className="text-white" size={24} />
+          Focus Session Configurator
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          Select your focus duration and strictness level to lock out distracting websites and desktop apps.
+        <p className="text-xs text-zinc-400 mt-1">
+          Lock down your computer for a dedicated duration with strict mode enforcement.
         </p>
       </div>
 
-      {/* Preset Chips */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {presets.map((p) => (
-          <button
-            key={p.name}
-            onClick={() => {
-              setSessionName(p.name);
-              setDuration(p.mins);
-              setStrictMode(p.strict);
-            }}
-            className={`p-3 rounded-xl border text-left transition-all ${
-              duration === p.mins
-                ? 'bg-sky-500/15 border-sky-500/40 shadow-sm shadow-sky-500/20'
-                : 'glass-panel hover:border-white/20'
-            }`}
-          >
-            <div className="font-bold text-xs text-slate-200">{p.name}</div>
-            <div className="font-mono text-sm text-sky-400 font-bold mt-1">{p.mins} min</div>
-          </button>
-        ))}
-      </div>
-
-      {/* Custom Duration Slider */}
-      <div className="glass-panel p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-slate-300">Duration</label>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-lg font-bold text-sky-400">{duration}</span>
-            <span className="text-xs text-slate-500">minutes</span>
-          </div>
-        </div>
-
-        <input
-          type="range"
-          min="5"
-          max="240"
-          step="5"
-          value={duration}
-          onChange={(e) => setDuration(Number(e.target.value))}
-          className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500"
-        />
-
-        <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-          <span>5m</span>
-          <span>60m (1h)</span>
-          <span>120m (2h)</span>
-          <span>180m (3h)</span>
-          <span>240m (4h)</span>
-        </div>
-      </div>
-
-      {/* Strict Mode Selector */}
-      <div className="space-y-3">
-        <label className="text-xs font-semibold text-slate-300 block">Strict Mode Level</label>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {[
-            {
-              id: 'none' as StrictModeLevel,
-              label: 'Standard',
-              badge: 'Casual',
-              desc: 'Allows pausing or ending the session anytime if plans change.',
-              icon: Shield,
-              color: 'text-sky-400',
-              border: 'border-sky-500/30',
-            },
-            {
-              id: 'locked' as StrictModeLevel,
-              label: 'Locked Focus',
-              badge: 'Recommended',
-              desc: 'Disables stop buttons. Cannot be stopped until the countdown completes.',
-              icon: Lock,
-              color: 'text-indigo-400',
-              border: 'border-indigo-500/30',
-            },
-            {
-              id: 'extreme' as StrictModeLevel,
-              label: 'Extreme Mode',
-              badge: 'Iron Will',
-              desc: 'Requires accurately typing a 24-character security phrase to cancel.',
-              icon: AlertOctagon,
-              color: 'text-rose-400',
-              border: 'border-rose-500/30',
-            },
-          ].map((mode) => {
-            const Icon = mode.icon;
-            const isSelected = strictMode === mode.id;
-            return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+        {/* Left Column: Preset cards */}
+        <div className="space-y-3">
+          <label className="text-xs font-mono text-zinc-400 uppercase tracking-wider block">
+            Select Template
+          </label>
+          <div className="grid grid-cols-2 gap-2.5">
+            {presets.map((p) => (
               <div
-                key={mode.id}
-                onClick={() => setStrictMode(mode.id)}
-                className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                  isSelected
-                    ? `bg-slate-900/90 ${mode.border} shadow-lg`
-                    : 'glass-panel hover:border-white/10'
+                key={p.name}
+                onClick={() => {
+                  setSessionName(p.name);
+                  setDuration(p.mins);
+                  setStrictMode(p.strict);
+                }}
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                  duration === p.mins
+                    ? 'bg-white text-black border-white shadow-lg'
+                    : 'bg-zinc-950 border-white/10 hover:border-white/30 text-white'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <Icon size={18} className={mode.color} />
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 text-slate-400">
-                    {mode.badge}
-                  </span>
-                </div>
-                <h4 className="font-bold text-xs text-slate-200">{mode.label}</h4>
-                <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{mode.desc}</p>
+                <div className="font-bold text-sm">{p.name}</div>
+                <div className="font-mono text-xs mt-1 font-bold">{p.mins} min</div>
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          <div className="pt-3">
+            <label className="text-xs font-mono text-zinc-400 uppercase tracking-wider block mb-1">
+              Custom Duration (Minutes)
+            </label>
+            <input
+              type="number"
+              min={5}
+              max={720}
+              value={duration}
+              onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value) || 1))}
+              className="input-field font-mono"
+            />
+          </div>
         </div>
-      </div>
 
-      {/* Distraction Selection */}
-      <div className="grid grid-cols-2 gap-3">
-        <label className="glass-panel p-4 flex items-center justify-between cursor-pointer">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-400">
-              <Globe size={16} />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-slate-200">Block Websites</div>
-              <div className="text-[10px] text-slate-400">Apply local DNS loopback</div>
+        {/* Right Column: Parameters */}
+        <div className="space-y-4 p-5 rounded-2xl bg-zinc-950 border border-white/10">
+          <div>
+            <label className="text-xs font-mono text-zinc-400 uppercase tracking-wider block mb-1">
+              Session Label
+            </label>
+            <input
+              type="text"
+              value={sessionName}
+              onChange={(e) => setSessionName(e.target.value)}
+              className="input-field"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-mono text-zinc-400 uppercase tracking-wider block mb-2">
+              Strict Enforcement Level
+            </label>
+            <div className="space-y-2">
+              {[
+                { id: 'none', label: 'Standard', desc: 'Can be paused or stopped anytime' },
+                { id: 'locked', label: 'Locked Strict', desc: 'Requires long verification phrase to end early' },
+                { id: 'extreme', label: 'Extreme Discipline', desc: 'Unbreakable until timer reaches zero' },
+              ].map((opt) => (
+                <div
+                  key={opt.id}
+                  onClick={() => setStrictMode(opt.id as StrictModeLevel)}
+                  className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                    strictMode === opt.id
+                      ? 'bg-zinc-900 border-white text-white'
+                      : 'bg-black border-white/5 text-zinc-400 hover:border-white/20'
+                  }`}
+                >
+                  <div className="font-semibold text-xs text-white flex items-center justify-between">
+                    <span>{opt.label}</span>
+                    {strictMode === opt.id && <CheckCircle2 size={13} className="text-white" />}
+                  </div>
+                  <div className="text-[11px] text-zinc-500 mt-0.5">{opt.desc}</div>
+                </div>
+              ))}
             </div>
           </div>
-          <input
-            type="checkbox"
-            checked={blockWebsites}
-            onChange={(e) => setBlockWebsites(e.target.checked)}
-            className="w-4 h-4 rounded text-sky-500"
-          />
-        </label>
 
-        <label className="glass-panel p-4 flex items-center justify-between cursor-pointer">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-              <AppWindow size={16} />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-slate-200">Block Applications</div>
-              <div className="text-[10px] text-slate-400">Scan & terminate blocked processes</div>
-            </div>
+          <div className="flex items-center gap-4 text-xs text-zinc-300 pt-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={blockWebsites}
+                onChange={(e) => setBlockWebsites(e.target.checked)}
+                className="accent-white"
+              />
+              <span>Block Websites</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={blockApps}
+                onChange={(e) => setBlockApps(e.target.checked)}
+                className="accent-white"
+              />
+              <span>Block Apps</span>
+            </label>
           </div>
-          <input
-            type="checkbox"
-            checked={blockApps}
-            onChange={(e) => setBlockApps(e.target.checked)}
-            className="w-4 h-4 rounded text-indigo-500"
-          />
-        </label>
-      </div>
 
-      {/* Start Button */}
-      <div className="pt-2">
-        <button
-          onClick={handleStart}
-          className="btn-primary w-full justify-center py-3 text-sm shadow-xl shadow-sky-500/25"
-        >
-          <Play size={16} fill="currentColor" />
-          Start {duration}m Focus Session Now
-        </button>
+          <button onClick={handleStart} className="btn-primary w-full justify-center mt-2">
+            <Play size={14} fill="currentColor" />
+            <span>Engage Focus Lock ({duration}m)</span>
+          </button>
+        </div>
       </div>
     </div>
   );

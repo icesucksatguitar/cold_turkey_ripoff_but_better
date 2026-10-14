@@ -91,6 +91,69 @@ export class WebBlocker {
         domainSet.add(`m.${clean}`);
         domainSet.add(`mobile.${clean}`);
         domainSet.add(`api.${clean}`);
+        domainSet.add(`web.${clean}`);
+        domainSet.add(`touch.${clean}`);
+      }
+
+      // Add common domain aliases and CDNs for major distractors
+      if (clean === 'youtube.com') {
+        domainSet.add('youtu.be');
+        domainSet.add('www.youtu.be');
+        domainSet.add('m.youtu.be');
+        domainSet.add('music.youtube.com');
+        domainSet.add('gaming.youtube.com');
+        domainSet.add('youtube-nocookie.com');
+        domainSet.add('www.youtube-nocookie.com');
+      } else if (clean === 'x.com' || clean === 'twitter.com') {
+        domainSet.add('x.com');
+        domainSet.add('www.x.com');
+        domainSet.add('twitter.com');
+        domainSet.add('www.twitter.com');
+        domainSet.add('mobile.twitter.com');
+        domainSet.add('t.co');
+      } else if (clean === 'reddit.com') {
+        domainSet.add('reddit.com');
+        domainSet.add('www.reddit.com');
+        domainSet.add('old.reddit.com');
+        domainSet.add('new.reddit.com');
+        domainSet.add('redd.it');
+        domainSet.add('v.redd.it');
+        domainSet.add('i.redd.it');
+      } else if (clean === 'instagram.com') {
+        domainSet.add('instagram.com');
+        domainSet.add('www.instagram.com');
+        domainSet.add('m.instagram.com');
+        domainSet.add('l.instagram.com');
+      } else if (clean === 'facebook.com') {
+        domainSet.add('facebook.com');
+        domainSet.add('www.facebook.com');
+        domainSet.add('m.facebook.com');
+        domainSet.add('fb.com');
+      } else if (clean === 'tiktok.com') {
+        domainSet.add('tiktok.com');
+        domainSet.add('www.tiktok.com');
+        domainSet.add('m.tiktok.com');
+      } else if (clean === 'twitch.tv') {
+        domainSet.add('twitch.tv');
+        domainSet.add('www.twitch.tv');
+        domainSet.add('m.twitch.tv');
+      }
+    }
+
+    // Always neutralize DNS-over-HTTPS (DoH) so Chrome and Edge fall back to the hosts file
+    if (domainSet.size > 0) {
+      const dohDomains = [
+        'cloudflare-dns.com',
+        'dns.google',
+        'dns.google.com',
+        'dns.quad9.net',
+        'doh.opendns.com',
+        'dns.adguard.com',
+        'chrome.cloudflare-dns.com',
+        'mozilla.cloudflare-dns.com',
+      ];
+      for (const d of dohDomains) {
+        domainSet.add(d);
       }
     }
 
@@ -185,7 +248,7 @@ export class WebBlocker {
   }
 
   /**
-   * Write content to hosts file directly if permitted, or prompt with elevated PowerShell
+   * Write content to hosts file directly if permitted, or prompt with elevated batch execution
    */
   private async writeHostsFile(content: string): Promise<WebBlockResult> {
     if (this.hasDirectWriteAccess()) {
@@ -201,30 +264,27 @@ export class WebBlocker {
     // Prepare temporary script file to execute with UAC elevation
     const tempDir = this.store.getDataDir();
     const tempHostsFile = path.join(tempDir, 'hosts_pending.tmp');
-    const tempPsScript = path.join(tempDir, 'elevated_hosts_update.ps1');
+    const tempBatFile = path.join(tempDir, 'update_hosts.bat');
 
     try {
       fs.writeFileSync(tempHostsFile, content, 'utf-8');
 
-      // Safe PowerShell script that writes the prepared file to system32 hosts and flushes DNS
-      const psScriptContent = `
-$target = "C:\\Windows\\System32\\drivers\\etc\\hosts"
-$source = "${tempHostsFile.replace(/\\/g, '\\\\')}"
-if (Test-Path $source) {
-    Copy-Item -Path $source -Destination $target -Force
-    Remove-Item -Path $source -Force -ErrorAction SilentlyContinue
-    ipconfig /flushdns | Out-Null
-}
+      // Robust batch script that copies pending hosts to Windows drivers/etc/hosts
+      const batContent = `@echo off
+copy /y "${tempHostsFile}" "C:\\Windows\\System32\\drivers\\etc\\hosts" >nul
+ipconfig /flushdns >nul
+del "${tempHostsFile}" 2>nul
+exit /b 0
 `;
-      fs.writeFileSync(tempPsScript, psScriptContent, 'utf-8');
+      fs.writeFileSync(tempBatFile, batContent, 'utf-8');
 
       // Trigger UAC elevation prompt
-      const cmd = `powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \\"${tempPsScript}\\"' -Verb RunAs -Wait"`;
+      const cmd = `powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/c \\"${tempBatFile}\\"' -Verb RunAs -Wait -WindowStyle Hidden"`;
       await execAsync(cmd, { timeout: 15000 });
 
       // Clean up script
       try {
-        if (fs.existsSync(tempPsScript)) fs.unlinkSync(tempPsScript);
+        if (fs.existsSync(tempBatFile)) fs.unlinkSync(tempBatFile);
         if (fs.existsSync(tempHostsFile)) fs.unlinkSync(tempHostsFile);
       } catch {}
 

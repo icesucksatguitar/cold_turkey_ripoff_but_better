@@ -33,6 +33,8 @@ const api = {
 
   // Application Blocker
   getRunningProcesses: (): Promise<RunningProcessInfo[]> => ipcRenderer.invoke('apps:getRunning'),
+  getInstalledApps: (): Promise<import('./types').InstalledAppInfo[]> => ipcRenderer.invoke('apps:getInstalled'),
+  killApp: (executableName: string): Promise<boolean> => ipcRenderer.invoke('apps:kill', executableName),
 
   // Hosts / Web Blocker
   applyHostsBlock: (): Promise<{ success: boolean; requiresElevation: boolean; message: string }> =>
@@ -46,6 +48,10 @@ const api = {
   minimizeWindow: () => ipcRenderer.send('window:minimize'),
   maximizeWindow: () => ipcRenderer.send('window:maximize'),
   closeWindow: () => ipcRenderer.send('window:close'),
+
+  // Memory Management
+  trimMemory: (): Promise<boolean> => ipcRenderer.invoke('system:trimMemory'),
+  getMemoryUsage: (): Promise<NodeJS.MemoryUsage> => ipcRenderer.invoke('system:getMemoryUsage'),
 
   // Real-time Event Listeners
   onSessionTick: (callback: (secondsRemaining: number) => void) => {

@@ -40,8 +40,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navItems = [
     { id: 'dashboard' as TabType, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'websites' as TabType, label: 'Website Blocker', icon: Globe, count: websitesCount },
     { id: 'apps' as TabType, label: 'App Blocker', icon: AppWindow, count: appsCount },
+    { id: 'websites' as TabType, label: 'Website Blocker', icon: Globe, count: websitesCount },
     { id: 'schedules' as TabType, label: 'Schedules', icon: Calendar, count: schedulesCount },
     { id: 'session' as TabType, label: 'Focus Session', icon: Clock },
     { id: 'activity' as TabType, label: 'Activity & Audit', icon: Activity },
@@ -49,10 +49,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-56 bg-slate-950/70 border-r border-white/5 flex flex-col justify-between p-3 select-none">
+    <aside className="w-56 bg-black border-r border-white/10 flex flex-col justify-between p-3 select-none">
       <div className="space-y-1">
-        <div className="px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-          Navigation
+        <div className="px-3 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono">
+          System Menu
         </div>
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -63,23 +63,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => onTabChange(item.id)}
               className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                 isActive
-                  ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30 shadow-sm shadow-sky-500/10'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent'
+                  ? 'bg-white text-black font-semibold shadow-md'
+                  : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
               <div className="flex items-center gap-2.5">
                 <Icon
-                  size={16}
-                  className={isActive ? 'text-sky-400' : 'text-slate-500 group-hover:text-slate-300'}
+                  size={15}
+                  className={isActive ? 'text-black' : 'text-zinc-400'}
                 />
                 <span>{item.label}</span>
               </div>
               {item.count !== undefined && item.count > 0 && (
                 <span
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
                     isActive
-                      ? 'bg-sky-500/30 text-sky-200'
-                      : 'bg-white/10 text-slate-400'
+                      ? 'bg-black text-white'
+                      : 'bg-zinc-800 text-zinc-300 border border-white/10'
                   }`}
                 >
                   {item.count}
@@ -91,26 +91,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Bottom Session Widget */}
-      <div className="p-2.5 rounded-xl bg-slate-900/60 border border-white/5 space-y-1.5">
+      <div className="p-3 rounded-xl bg-zinc-950 border border-white/10 space-y-1.5">
         <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-400 font-medium">Protection Status</span>
+          <span className="text-zinc-400 font-medium">Engine Status</span>
           {activeSession ? (
-            <span className="flex items-center gap-1 text-emerald-400 font-semibold text-[10px]">
-              <ShieldCheck size={12} />
+            <span className="flex items-center gap-1 text-white font-mono font-bold text-[10px]">
+              <ShieldCheck size={12} className="text-white" />
               ACTIVE
             </span>
           ) : (
-            <span className="text-slate-500 font-medium text-[10px]">STANDBY</span>
+            <span className="text-zinc-500 font-mono text-[10px]">STANDBY</span>
           )}
         </div>
-        <div className="text-[10px] text-slate-500">
+        <div className="text-[10px] text-zinc-400 truncate">
           {activeSession ? (
-            <div className="flex items-center gap-1 text-sky-300 font-medium">
-              {activeSession.strictMode !== 'none' && <Lock size={10} className="text-rose-400" />}
+            <div className="flex items-center gap-1 text-white font-medium">
+              {activeSession.strictMode !== 'none' && <Lock size={10} className="text-white" />}
               <span>{activeSession.name}</span>
             </div>
           ) : (
-            'Local filtering engine ready'
+            'Local protection active'
           )}
         </div>
       </div>

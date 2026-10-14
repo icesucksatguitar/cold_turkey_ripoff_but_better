@@ -176,7 +176,7 @@ export class BlockerStore {
           apps: parsed.apps || DEFAULT_APPS,
           schedules: parsed.schedules || DEFAULT_SCHEDULES,
           activeSession: parsed.activeSession || null,
-          activityLogs: parsed.activityLogs || [],
+          activityLogs: (parsed.activityLogs || []).slice(0, 100),
           settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
         };
       } catch (err) {
@@ -233,10 +233,10 @@ export class BlockerStore {
       details,
     };
 
-    // Keep the most recent 1000 logs
+    // Keep the most recent 100 logs to minimize memory usage
     this.data.activityLogs.unshift(log);
-    if (this.data.activityLogs.length > 1000) {
-      this.data.activityLogs = this.data.activityLogs.slice(0, 1000);
+    if (this.data.activityLogs.length > 100) {
+      this.data.activityLogs = this.data.activityLogs.slice(0, 100);
     }
 
     this.persist();

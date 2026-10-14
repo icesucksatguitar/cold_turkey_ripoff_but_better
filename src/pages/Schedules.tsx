@@ -58,7 +58,6 @@ export const Schedules: React.FC<SchedulesProps> = ({
       blockWebsites,
       blockApps,
       strictMode,
-      enabled: true,
       presetName,
     });
 
@@ -66,147 +65,148 @@ export const Schedules: React.FC<SchedulesProps> = ({
   };
 
   return (
-    <div className="p-6 space-y-5 overflow-y-auto h-full">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-6 space-y-6 overflow-y-auto h-full bg-black text-white select-none">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2.5">
-            <Calendar className="text-emerald-400" size={22} />
-            Focus Schedules
+          <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">
+            Automated Enforcement
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white mt-1 flex items-center gap-2.5">
+            <Calendar className="text-white" size={24} />
+            Weekly Schedules
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Automate recurring distraction-free blocks during your daily routine.
+          <p className="text-xs text-zinc-400 mt-1">
+            Automate recurring distraction-free blocks across specific days and time intervals.
           </p>
         </div>
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="btn-primary text-xs"
+          className="btn-primary"
         >
-          <Plus size={15} />
-          New Schedule
+          <Plus size={14} />
+          <span>Add Schedule</span>
         </button>
       </div>
 
-      {/* Schedules Grid */}
-      {schedules.length === 0 ? (
-        <div className="glass-panel p-10 text-center space-y-3">
-          <Calendar size={36} className="mx-auto text-slate-600" />
-          <h3 className="text-sm font-semibold text-slate-300">No recurring schedules</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Set up automatic focus windows for study hours, morning deep work, or bedtime device blocks.
-          </p>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="btn-primary text-xs mx-auto mt-2"
-          >
-            <Plus size={14} />
-            Create First Schedule
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {schedules.map((schedule) => (
+      {/* Schedules List */}
+      <div className="space-y-3">
+        {schedules.length === 0 ? (
+          <div className="p-12 text-center rounded-xl bg-zinc-950 border border-white/10">
+            <Calendar size={36} className="mx-auto text-zinc-600 mb-3" />
+            <p className="text-sm font-semibold text-white">No schedules configured</p>
+            <p className="text-xs text-zinc-500 mt-1">Create an automated routine to stay productive automatically.</p>
+          </div>
+        ) : (
+          schedules.map((sched) => (
             <div
-              key={schedule.id}
-              className={`p-4 rounded-xl border transition-all ${
-                schedule.enabled
-                  ? 'glass-panel border-white/10 hover:border-emerald-500/30'
-                  : 'bg-slate-900/30 border-white/5 opacity-60'
+              key={sched.id}
+              className={`p-4 rounded-xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                sched.enabled
+                  ? 'bg-zinc-950 border-white/20 shadow-md'
+                  : 'bg-zinc-950/50 border-white/5 opacity-60'
               }`}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-bold text-sm text-slate-100">{schedule.name}</h3>
-                  <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-                    <Clock size={13} className="text-emerald-400" />
-                    <span className="font-mono font-medium">
-                      {schedule.startTime} – {schedule.endTime}
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-base text-white">{sched.name}</span>
+                  {sched.enabled ? (
+                    <span className="badge badge-blocked">ACTIVE</span>
+                  ) : (
+                    <span className="badge badge-idle">DISABLED</span>
+                  )}
+                  {sched.strictMode !== 'none' && (
+                    <span className="badge badge-idle">
+                      <Lock size={10} />
+                      {sched.strictMode}
                     </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4 text-xs font-mono text-zinc-400">
+                  <div className="flex items-center gap-1.5 text-white">
+                    <Clock size={13} className="text-zinc-500" />
+                    <span>{sched.startTime} — {sched.endTime}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    {sched.blockWebsites && (
+                      <span className="flex items-center gap-1">
+                        <Globe size={11} className="text-zinc-500" />
+                        Websites
+                      </span>
+                    )}
+                    {sched.blockWebsites && sched.blockApps && <span>•</span>}
+                    {sched.blockApps && (
+                      <span className="flex items-center gap-1">
+                        <AppWindow size={11} className="text-zinc-500" />
+                        Apps
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={schedule.enabled}
-                      onChange={() => onToggleSchedule(schedule.id)}
-                    />
-                    <span className="slider"></span>
-                  </label>
-                  <button
-                    onClick={() => onRemoveSchedule(schedule.id)}
-                    className="w-7 h-7 rounded flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                    title="Delete schedule"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                {/* Day Pills */}
+                <div className="flex items-center gap-1 pt-1">
+                  {DAY_NAMES.map((dayName, idx) => {
+                    const isSelected = sched.daysOfWeek.includes(idx);
+                    return (
+                      <span
+                        key={dayName}
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                          isSelected
+                            ? 'bg-white text-black'
+                            : 'bg-zinc-900 text-zinc-600'
+                        }`}
+                      >
+                        {dayName}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Days Chips */}
-              <div className="flex items-center gap-1 mt-4">
-                {DAY_NAMES.map((name, index) => {
-                  const isSelected = schedule.daysOfWeek.includes(index);
-                  return (
-                    <span
-                      key={name}
-                      className={`text-[10px] font-bold w-6 h-6 rounded flex items-center justify-center ${
-                        isSelected
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : 'bg-white/5 text-slate-600'
-                      }`}
-                    >
-                      {name.charAt(0)}
-                    </span>
-                  );
-                })}
-              </div>
+              <div className="flex items-center gap-3 self-end md:self-center">
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={sched.enabled}
+                    onChange={() => onToggleSchedule(sched.id)}
+                  />
+                  <span className="slider"></span>
+                </label>
 
-              {/* Rule Pills */}
-              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-white/5 text-[11px] text-slate-400">
-                {schedule.blockWebsites && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20 text-[10px]">
-                    <Globe size={10} /> Websites
-                  </span>
-                )}
-                {schedule.blockApps && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[10px]">
-                    <AppWindow size={10} /> Apps
-                  </span>
-                )}
-                {schedule.strictMode !== 'none' && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20 text-[10px] uppercase font-bold">
-                    <Lock size={10} /> Strict
-                  </span>
-                )}
+                <button
+                  onClick={() => onRemoveSchedule(sched.id)}
+                  className="w-8 h-8 rounded flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-colors"
+                  title="Remove schedule"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
 
       {/* Add Schedule Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="glass-panel max-w-lg w-full p-6 space-y-4 border border-emerald-500/30">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                <Calendar size={16} className="text-emerald-400" />
-                Create Focus Schedule
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-zinc-950 border border-white/20 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-bold text-base text-white">Create Automated Schedule</h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-slate-500 hover:text-slate-300"
+                className="text-zinc-400 hover:text-white text-sm"
               >
-                ✕
+                Close
               </button>
             </div>
 
             <form onSubmit={handleCreateSubmit} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-400">Schedule Name</label>
+              <div>
+                <label className="text-xs text-zinc-400 block mb-1">Routine Name</label>
                 <input
                   type="text"
                   value={name}
@@ -216,10 +216,9 @@ export const Schedules: React.FC<SchedulesProps> = ({
                 />
               </div>
 
-              {/* Time Range */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-slate-400">Start Time (24h)</label>
+                <div>
+                  <label className="text-xs text-zinc-400 block mb-1">Start Time (24h)</label>
                   <input
                     type="time"
                     value={startTime}
@@ -228,8 +227,8 @@ export const Schedules: React.FC<SchedulesProps> = ({
                     required
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-slate-400">End Time (24h)</label>
+                <div>
+                  <label className="text-xs text-zinc-400 block mb-1">End Time (24h)</label>
                   <input
                     type="time"
                     value={endTime}
@@ -240,67 +239,51 @@ export const Schedules: React.FC<SchedulesProps> = ({
                 </div>
               </div>
 
-              {/* Days of Week */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-slate-400">Active Days</label>
-                <div className="grid grid-cols-7 gap-1">
-                  {DAY_NAMES.map((dayName, idx) => {
-                    const isSelected = selectedDays.includes(idx);
+              <div>
+                <label className="text-xs text-zinc-400 block mb-1.5">Active Days</label>
+                <div className="flex items-center gap-1.5">
+                  {DAY_NAMES.map((dName, idx) => {
+                    const active = selectedDays.includes(idx);
                     return (
                       <button
                         type="button"
-                        key={dayName}
+                        key={dName}
                         onClick={() => handleDayToggle(idx)}
-                        className={`py-1.5 rounded text-xs font-bold transition-all ${
-                          isSelected
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-white/5 text-slate-500 hover:text-slate-300 border border-transparent'
+                        className={`flex-1 py-1.5 rounded text-xs font-mono font-bold transition-all ${
+                          active
+                            ? 'bg-white text-black'
+                            : 'bg-zinc-900 text-zinc-500 hover:text-white'
                         }`}
                       >
-                        {dayName}
+                        {dName}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Strict Mode Selector */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-400">Strictness Level</label>
-                <select
-                  value={strictMode}
-                  onChange={(e) => setStrictMode(e.target.value as StrictModeLevel)}
-                  className="input-field text-xs cursor-pointer"
-                >
-                  <option value="none">Casual (Can pause or stop anytime)</option>
-                  <option value="locked">Locked (Disabled stop button)</option>
-                  <option value="extreme">Extreme (Requires verification phrase)</option>
-                </select>
-              </div>
-
-              {/* Distraction Toggles */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <label className="p-3 rounded-lg bg-slate-900/60 border border-white/5 flex items-center justify-between cursor-pointer">
-                  <span className="text-xs text-slate-300 font-medium">Block Websites</span>
+              <div className="flex items-center gap-4 text-xs text-zinc-300 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={blockWebsites}
                     onChange={(e) => setBlockWebsites(e.target.checked)}
-                    className="w-4 h-4 rounded text-sky-500"
+                    className="accent-white"
                   />
+                  <span>Block Websites</span>
                 </label>
-                <label className="p-3 rounded-lg bg-slate-900/60 border border-white/5 flex items-center justify-between cursor-pointer">
-                  <span className="text-xs text-slate-300 font-medium">Block Apps</span>
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={blockApps}
                     onChange={(e) => setBlockApps(e.target.checked)}
-                    className="w-4 h-4 rounded text-indigo-500"
+                    className="accent-white"
                   />
+                  <span>Block Apps</span>
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}

@@ -1,13 +1,16 @@
 appId: com.focusguard.app
 productName: FocusGuard
 directories:
-  output: release
+  output: release-build
   buildResources: build
 files:
   - "dist/**/*"
   - "dist-electron/**/*"
+  - "assets/**/*"
+  - "electron/scripts/**/*"
   - "package.json"
 win:
+  icon: assets/icon.ico
   target:
     - target: nsis
       arch:
@@ -15,7 +18,7 @@ win:
     - target: portable
       arch:
         - x64
-  requestedExecutionLevel: asInvoker
+  requestedExecutionLevel: requireAdministrator
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

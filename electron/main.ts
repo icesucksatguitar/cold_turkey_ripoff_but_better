@@ -7,6 +7,53 @@ import { WebBlocker } from './blocker/webBlocker';
 import { Scheduler } from './blocker/scheduler';
 import { AppTray } from './tray';
 import { BlockerStoreData } from './types';
+import {
+  trimMemory,
+  startPeriodicMemoryTrimming,
+  stopPeriodicMemoryTrimming,
+} from './memUtils';
+
+// ============================================================================
+// ULTRA-LOW RAM Chromium & Node Optimizations
+// Eliminates GPU process, constrains V8 heap, and minimizes background services
+// ============================================================================
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-gpu-compositing');
+app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('disable-accelerated-2d-canvas');
+app.commandLine.appendSwitch('disable-accelerated-video-decode');
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=48 --expose-gc');
+app.commandLine.appendSwitch('renderer-process-limit', '1');
+app.commandLine.appendSwitch(
+  'disable-features',
+  'AudioServiceOutOfProcess,CalculateNativeWinOcclusion,InterestFeedContentSuggestions'
+);
+app.commandLine.appendSwitch('disable-background-networking');
+app.commandLine.appendSwitch('disable-component-update');
+app.commandLine.appendSwitch('disable-sync');
+app.commandLine.appendSwitch('disable-extensions');
+app.commandLine.appendSwitch('disable-default-apps');
+app.commandLine.appendSwitch('no-zygote');
+
+process.on('uncaughtException', (err) => {
+  try {
+    fs.appendFileSync('crash.log', 'Uncaught Exception: ' + (err?.stack || err) + '\n');
+  } catch {}
+});
+process.on('unhandledRejection', (reason) => {
+  try {
+    fs.appendFileSync(
+      'crash.log',
+      'Unhandled Rejection: ' + (reason instanceof Error ? reason.stack : String(reason)) + '\n'
+    );
+  } catch {}
+});
+app.on('quit', (_e, code) => {
+  try {
+    fs.appendFileSync('crash.log', 'App quit with code: ' + code + '\n');
+  } catch {}
+});
 
 let mainWindow: BrowserWindow | null = null;
 let store: BlockerStore;
@@ -16,20 +63,36 @@ let scheduler: Scheduler;
 let tray: AppTray;
 let isQuitting = false;
 
+const logDir = path.join(process.env.APPDATA || process.cwd(), 'FocusGuard');
+if (!fs.existsSync(logDir)) {
+  try {
+    fs.mkdirSync(logDir, { recursive: true });
+  } catch {}
+}
+const logFile = path.join(logDir, 'app_lifecycle.log');
+function log(msg: string) {
+  try {
+    fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
+  } catch {}
+}
+
 // Guarantee single instance
 const gotTheLock = app.requestSingleInstanceLock();
+log('requestSingleInstanceLock result: ' + gotTheLock);
+
 if (!gotTheLock) {
+  log('Did not get single instance lock, quitting.');
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.show();
-      mainWindow.focus();
-    }
+    log('Second instance triggered');
+    showWindow();
   });
 
-  app.whenReady().then(initApp);
+  app.whenReady().then(() => {
+    log('app.whenReady resolved');
+    return initApp();
+  });
 }
 
 async function initApp() {
@@ -68,7 +131,13 @@ async function initApp() {
     },
     onTimeTick: (secondsRemaining) => {
       tray.updateTime(secondsRemaining);
-      if (mainWindow && !mainWindow.isDestroyed()) {
+      // Only send IPC tick to renderer when window is actively visible to prevent unnecessary React re-renders
+      if (
+        mainWindow &&
+        !mainWindow.isDestroyed() &&
+        mainWindow.isVisible() &&
+        !mainWindow.isMinimized()
+      ) {
         mainWindow.webContents.send('scheduler:tick', secondsRemaining);
       }
     },
@@ -84,19 +153,27 @@ async function initApp() {
     },
   });
 
-  // Initialize background scheduler
+  // Initialize background scheduler and adaptive app blocker
   await scheduler.init();
+  appBlocker.start(1200);
 
-  // Create UI Window
+  // Apply website block on startup if websites are enabled
+  try {
+    const initialWebsites = (store.getData().websites || []).filter((w) => w.enabled);
+    if (initialWebsites.length > 0) {
+      await webBlocker.applyBlock(store.getData().websites);
+    }
+  } catch (err) {
+    log('Failed to apply initial website block: ' + err);
+  }
+
+  // Create UI Window initially
   createWindow();
 
   // Initialize System Tray
   tray = new AppTray({
     onShowApp: () => {
-      if (mainWindow) {
-        mainWindow.show();
-        mainWindow.focus();
-      }
+      showWindow();
     },
     onQuickStart: async (mins) => {
       await scheduler.startSession({
@@ -116,10 +193,7 @@ async function initApp() {
       }
     },
     onEmergencyStop: async () => {
-      if (mainWindow) {
-        mainWindow.show();
-        mainWindow.focus();
-      }
+      showWindow();
     },
     onRestoreHosts: async () => {
       await webBlocker.removeBlock();
@@ -135,7 +209,8 @@ async function initApp() {
         dialog.showMessageBox({
           type: 'warning',
           title: 'Strict Session in Progress',
-          message: 'A locked strict session is currently running. FocusGuard cannot be closed until it finishes.',
+          message:
+            'A locked strict session is currently running. FocusGuard cannot be closed until it finishes.',
         });
         return;
       }
@@ -147,49 +222,129 @@ async function initApp() {
   tray.updateSession(scheduler.getActiveSession());
 
   setupIpcHandlers();
+
+  // Start periodic 60-second Windows working set trimming
+  startPeriodicMemoryTrimming(60000);
+}
+
+/**
+ * Display or resurrect the UI Window
+ */
+function showWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+  } else {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+}
+
+/**
+ * Destroys BrowserWindow when minimized to tray.
+ * Reclaims the entire Chromium renderer process (~250MB) and flushes working set.
+ */
+function destroyWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    log('destroyWindow: freeing Chromium renderer process');
+    mainWindow.removeAllListeners();
+    mainWindow.destroy();
+    mainWindow = null;
+
+    // Flush RAM immediately
+    setTimeout(() => {
+      trimMemory();
+    }, 200);
+  }
 }
 
 function createWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
+
+  log('createWindow invoked');
+  const iconPath = path.join(__dirname, '../assets/icon.ico');
   mainWindow = new BrowserWindow({
     width: 1140,
     height: 780,
     minWidth: 920,
     minHeight: 640,
-    frame: false,
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
+    frame: true,
     backgroundColor: '#020617',
-    show: false,
+    title: 'FocusGuard - Local Windows Productivity Blocker',
+    show: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
+      webSecurity: false,
     },
+  });
+
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    log(`[RENDERER CONSOLE ${level}]: ${message} (${sourceId}:${line})`);
+  });
+
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    log(`Render process gone: reason=${details.reason}, exitCode=${details.exitCode}`);
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    log(`Page load error (${errorCode}): ${errorDescription} on ${validatedURL}`);
+  });
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    log('FocusGuard UI loaded successfully');
+    // Once UI has initialized, trim working set of unnecessary startup allocations
+    setTimeout(() => {
+      trimMemory();
+    }, 1200);
   });
 
   // Load URL or build file
   const distHtmlPath = path.join(__dirname, '../dist/index.html');
+  log('Loading UI: isPackaged=' + app.isPackaged + ', distPath=' + distHtmlPath);
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-  } else if (fs.existsSync(distHtmlPath)) {
+  } else if (app.isPackaged || fs.existsSync(distHtmlPath)) {
     mainWindow.loadFile(distHtmlPath);
   } else {
     mainWindow.loadURL('http://localhost:5173');
   }
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
+  mainWindow.show();
+  mainWindow.focus();
+
+  // Minimize event: trim working set
+  mainWindow.on('minimize', () => {
+    log('Window minimized, trimming working set');
+    setTimeout(() => {
+      trimMemory();
+    }, 300);
   });
 
-  // Minimize to tray instead of quitting
+  // Close event: minimize to tray by DESTROYING the BrowserWindow
   mainWindow.on('close', (e) => {
     const settings = store.getData().settings;
+    log(
+      'mainWindow close event, minimizeToTray=' +
+        settings.minimizeToTray +
+        ', isQuitting=' +
+        isQuitting
+    );
     if (!isQuitting && settings.minimizeToTray) {
       e.preventDefault();
-      mainWindow?.hide();
+      destroyWindow();
     }
   });
 
   mainWindow.on('closed', () => {
+    log('mainWindow closed event');
     mainWindow = null;
   });
 }
@@ -200,8 +355,22 @@ function setupIpcHandlers() {
     return store.getData();
   });
 
-  ipcMain.handle('store:save', (_event, data: BlockerStoreData) => {
+  ipcMain.handle('store:save', async (_event, data: BlockerStoreData) => {
     store.persist(data);
+    appBlocker.scanAndEnforce().catch(() => {});
+
+    // Synchronize website blocking immediately
+    try {
+      const enabledWebsites = (data.websites || []).filter((w) => w.enabled);
+      if (enabledWebsites.length > 0) {
+        await webBlocker.applyBlock(data.websites);
+      } else {
+        await webBlocker.removeBlock();
+      }
+    } catch (err) {
+      log('Error syncing website block in store:save: ' + err);
+    }
+
     return true;
   });
 
@@ -245,6 +414,14 @@ function setupIpcHandlers() {
     return await appBlocker.getRunningProcesses();
   });
 
+  ipcMain.handle('apps:getInstalled', async () => {
+    return await appBlocker.getInstalledApps();
+  });
+
+  ipcMain.handle('apps:kill', async (_event, executableName: string) => {
+    return await appBlocker.terminateAppImmediately(executableName);
+  });
+
   // Hosts / Website handlers
   ipcMain.handle('hosts:apply', async () => {
     const websites = store.getData().websites;
@@ -265,6 +442,7 @@ function setupIpcHandlers() {
   // Window controls
   ipcMain.on('window:minimize', () => {
     mainWindow?.minimize();
+    setTimeout(() => trimMemory(), 200);
   });
 
   ipcMain.on('window:maximize', () => {
@@ -276,22 +454,44 @@ function setupIpcHandlers() {
   });
 
   ipcMain.on('window:close', () => {
-    mainWindow?.close();
+    const settings = store.getData().settings;
+    if (settings.minimizeToTray) {
+      destroyWindow();
+    } else {
+      mainWindow?.close();
+    }
+  });
+
+  // System memory diagnostics and manual trim
+  ipcMain.handle('system:trimMemory', () => {
+    trimMemory();
+    return true;
+  });
+
+  ipcMain.handle('system:getMemoryUsage', () => {
+    return process.memoryUsage();
   });
 }
 
 app.on('before-quit', async () => {
+  log('app before-quit event');
   isQuitting = true;
+  stopPeriodicMemoryTrimming();
   scheduler?.stopClock();
   appBlocker?.stop();
   tray?.destroy();
 });
 
 app.on('window-all-closed', () => {
+  log('app window-all-closed event');
   if (process.platform !== 'darwin') {
     const settings = store?.getData()?.settings;
     if (!settings?.minimizeToTray) {
+      log('minimizeToTray is false, quitting app');
       app.quit();
+    } else {
+      log('minimizeToTray is true, keeping app running in tray with zero-window footprint');
+      // Window is already destroyed, main background process stays running with negligible RAM
     }
   }
 });

@@ -35,6 +35,8 @@ export const App: React.FC = () => {
             onAddWebsite={store.addWebsite}
             onToggleWebsite={store.toggleWebsite}
             onRemoveWebsite={store.removeWebsite}
+            onBlockAllWebsites={store.blockAllWebsites}
+            onUnblockAllWebsites={store.unblockAllWebsites}
           />
         );
       case 'apps':
@@ -44,6 +46,8 @@ export const App: React.FC = () => {
             onAddApp={store.addApp}
             onToggleApp={store.toggleApp}
             onRemoveApp={store.removeApp}
+            onBlockAllApps={store.blockAllApps}
+            onUnblockAllApps={store.unblockAllApps}
           />
         );
       case 'schedules':
@@ -91,7 +95,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 select-none">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-black text-white select-none">
       {/* Titlebar */}
       <Header
         activeSession={store.data.activeSession}
@@ -111,14 +115,14 @@ export const App: React.FC = () => {
         />
 
         {/* Tab Page Container */}
-        <main className="flex-1 overflow-hidden relative bg-[#070b14]">
+        <main className="flex-1 overflow-hidden relative bg-black">
           {renderTabContent()}
 
-          {/* Toast Notification Banner */}
+          {/* Toast Notification Banner (Pure Monochrome) */}
           {store.toastMessage && (
             <div className="absolute bottom-5 right-5 z-50 pointer-events-none">
-              <div className="px-4 py-2.5 rounded-xl bg-slate-900/95 border border-sky-500/40 text-sky-200 text-xs font-medium shadow-2xl backdrop-blur-md animate-fade-in flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+              <div className="px-4 py-2.5 rounded-xl bg-zinc-950/95 border border-white/20 text-white text-xs font-mono font-medium shadow-2xl backdrop-blur-md flex items-center gap-2.5">
+                <span className="w-2 h-2 rounded-full bg-white mono-pulse"></span>
                 <span>{store.toastMessage}</span>
               </div>
             </div>

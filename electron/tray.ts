@@ -1,4 +1,6 @@
 import { Menu, Tray, nativeImage } from 'electron';
+import * as path from 'path';
+import * as fs from 'fs';
 import { ActiveSession } from './types';
 
 export interface TrayCallbacks {
@@ -21,16 +23,34 @@ export class AppTray {
   }
 
   public init() {
-    // Generate a clean 16x16 icon in memory (shield/lock pixel icon)
-    const icon = this.createDefaultIcon();
-    this.tray = new Tray(icon);
-    this.tray.setToolTip('FocusGuard - Local Windows Productivity Blocker');
+    try {
+      let icon = this.loadAssetIcon();
+      this.tray = new Tray(icon);
+      this.tray.setToolTip('FocusGuard - Local Windows Productivity Blocker');
 
-    this.tray.on('double-click', () => {
-      this.callbacks.onShowApp();
-    });
+      this.tray.on('double-click', () => {
+        this.callbacks.onShowApp();
+      });
 
-    this.updateMenu();
+      this.updateMenu();
+    } catch (err) {
+      console.warn('Tray icon could not be initialized:', err);
+    }
+  }
+
+  private loadAssetIcon(): Electron.NativeImage {
+    try {
+      const trayPath = path.join(__dirname, '../assets/tray.png');
+      const iconPath = path.join(__dirname, '../assets/icon.png');
+      const target = fs.existsSync(trayPath) ? trayPath : iconPath;
+      if (fs.existsSync(target)) {
+        const img = nativeImage.createFromPath(target);
+        if (!img.isEmpty()) {
+          return img.resize({ width: 16, height: 16 });
+        }
+      }
+    } catch {}
+    return this.createDefaultIcon();
   }
 
   public updateSession(session: ActiveSession | null) {

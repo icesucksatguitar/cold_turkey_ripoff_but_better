@@ -122,5 +122,8 @@ describe('Scheduler Strict Mode & Session Engine', () => {
     const stoppedWithOverride = await scheduler.stopSession(true);
     assert.strictEqual(stoppedWithOverride, true);
     assert.strictEqual(scheduler.getActiveSession(), null);
+
+    scheduler.stopClock();
+    appBlocker.stop();
   });
 });

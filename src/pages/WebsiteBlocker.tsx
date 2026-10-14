@@ -10,6 +10,10 @@ import {
   CheckCircle2,
   FileCode,
   ExternalLink,
+  ShieldCheck,
+  ShieldAlert,
+  RefreshCw,
+  Zap,
 } from 'lucide-react';
 import { BlockedWebsite } from '../types';
 
@@ -18,6 +22,8 @@ interface WebsiteBlockerProps {
   onAddWebsite: (domain: string, category: BlockedWebsite['category'], includeSubdomains: boolean) => void;
   onToggleWebsite: (id: string) => void;
   onRemoveWebsite: (id: string) => void;
+  onBlockAllWebsites?: () => void;
+  onUnblockAllWebsites?: () => void;
 }
 
 export const WebsiteBlocker: React.FC<WebsiteBlockerProps> = ({
@@ -25,6 +31,8 @@ export const WebsiteBlocker: React.FC<WebsiteBlockerProps> = ({
   onAddWebsite,
   onToggleWebsite,
   onRemoveWebsite,
+  onBlockAllWebsites,
+  onUnblockAllWebsites,
 }) => {
   const [newDomain, setNewDomain] = useState('');
   const [newCategory, setNewCategory] = useState<BlockedWebsite['category']>('entertainment');
@@ -34,12 +42,48 @@ export const WebsiteBlocker: React.FC<WebsiteBlockerProps> = ({
   const [showImportModal, setShowImportModal] = useState(false);
   const [importText, setImportText] = useState('');
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDomain.trim()) return;
     onAddWebsite(newDomain, newCategory, includeSubdomains);
     setNewDomain('');
+    if (window.focusGuardApi && window.focusGuardApi.applyHostsBlock) {
+      window.focusGuardApi.applyHostsBlock().catch(() => {});
+    }
+  };
+
+  const handleToggle = (id: string) => {
+    onToggleWebsite(id);
+    if (window.focusGuardApi && window.focusGuardApi.applyHostsBlock) {
+      window.focusGuardApi.applyHostsBlock().catch(() => {});
+    }
+  };
+
+  const handleRemove = (id: string) => {
+    onRemoveWebsite(id);
+    if (window.focusGuardApi && window.focusGuardApi.applyHostsBlock) {
+      window.focusGuardApi.applyHostsBlock().catch(() => {});
+    }
+  };
+
+  const handleForceSync = async () => {
+    setIsSyncing(true);
+    setSyncStatusMsg(null);
+    if (window.focusGuardApi && window.focusGuardApi.applyHostsBlock) {
+      try {
+        const res = await window.focusGuardApi.applyHostsBlock();
+        setSyncStatusMsg(res.message || 'Hosts updated & DNS flushed.');
+      } catch (err) {
+        setSyncStatusMsg('Error syncing hosts file.');
+      }
+    } else {
+      setSyncStatusMsg('DNS cache flushed (simulation).');
+    }
+    setTimeout(() => setSyncStatusMsg(null), 4000);
+    setIsSyncing(false);
   };
 
   const handleImportSubmit = () => {
@@ -75,16 +119,19 @@ export const WebsiteBlocker: React.FC<WebsiteBlockerProps> = ({
   });
 
   return (
-    <div className="p-6 space-y-5 overflow-y-auto h-full">
+    <div className="p-6 space-y-6 overflow-y-auto h-full bg-black text-white select-none">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2.5">
-            <Globe className="text-sky-400" size={22} />
+          <div className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">
+            DNS Loopback Layer
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white mt-1 flex items-center gap-2.5">
+            <Globe className="text-white" size={24} />
             Website Blocker
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Blocks domains and subdomains via local Windows DNS loopback.
+          <p className="text-xs text-zinc-400 mt-1">
+            Redirects distracting domains and subdomains to local loopback (127.0.0.1 / ::1).
           </p>
         </div>
 
@@ -94,15 +141,15 @@ export const WebsiteBlocker: React.FC<WebsiteBlockerProps> = ({
             className="btn-secondary text-xs"
             title="Inspect generated hosts lines"
           >
-            <Eye size={14} />
-            Inspect Hosts Rules
+            <Eye size={13} />
+            Inspect Hosts
           </button>
           <button
             onClick={() => setShowImportModal(true)}
             className="btn-secondary text-xs"
             title="Import domains"
           >
-            <Upload size={14} />
+            <Upload size={13} />
             Import
           </button>
           <button
@@ -110,20 +157,80 @@ export const WebsiteBlocker: React.FC<WebsiteBlockerProps> = ({
             className="btn-secondary text-xs"
             title="Export block list"
           >
-            <Download size={14} />
+            <Download size={13} />
             Export
           </button>
         </div>
       </div>
 
+      {/* Website Protection Status & Control Card */}
+      <div className="p-4 rounded-xl bg-zinc-950 border border-white/15 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-white text-black flex items-center justify-center font-bold shrink-0">
+            <Globe size={18} />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
+              <span>Windows Loopback DNS Blocker</span>
+              <span className="px-1.5 py-0.5 rounded bg-white text-black text-[10px] font-bold font-mono">
+                {websites.filter((w) => w.enabled).length} ACTIVE
+              </span>
+            </div>
+            <div className="text-[11px] text-zinc-400 mt-0.5">
+              Domains redirect to 127.0.0.1 & ::1. Secure DNS (DoH) is neutralized for Chrome, Edge & Brave.
+            </div>
+            {syncStatusMsg && (
+              <div className="text-[11px] font-mono text-zinc-200 mt-1 flex items-center gap-1.5">
+                <CheckCircle2 size={12} className="text-white" />
+                <span>{syncStatusMsg}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
+          <button
+            onClick={handleForceSync}
+            disabled={isSyncing}
+            className="btn-secondary text-xs font-mono"
+            title="Re-write hosts rules and flush Windows DNS cache"
+          >
+            <RefreshCw size={13} className={isSyncing ? 'animate-spin' : ''} />
+            <span>{isSyncing ? 'Flushing DNS...' : 'Flush DNS & Re-Sync'}</span>
+          </button>
+
+          {onBlockAllWebsites && (
+            <button
+              onClick={onBlockAllWebsites}
+              className="btn-primary text-xs font-mono font-bold"
+              title="Block all configured domains"
+            >
+              <ShieldAlert size={13} />
+              <span>BLOCK ALL</span>
+            </button>
+          )}
+
+          {onUnblockAllWebsites && (
+            <button
+              onClick={onUnblockAllWebsites}
+              className="btn-secondary text-xs font-mono"
+              title="Temporarily unblock all domains"
+            >
+              <ShieldCheck size={13} />
+              <span>ALLOW ALL</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Add Domain Form Card */}
-      <div className="glass-panel p-4">
+      <div className="p-4 rounded-xl bg-zinc-950 border border-white/10">
         <form onSubmit={handleAddSubmit} className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
             <div className="md:col-span-5">
               <input
                 type="text"
-                placeholder="Enter domain (e.g. youtube.com or reddit.com)"
+                placeholder="Enter domain (e.g. youtube.com, reddit.com, x.com)"
                 value={newDomain}
                 onChange={(e) => setNewDomain(e.target.value)}
                 className="input-field text-xs font-mono"
@@ -138,58 +245,56 @@ export const WebsiteBlocker: React.FC<WebsiteBlockerProps> = ({
               >
                 <option value="entertainment">Entertainment</option>
                 <option value="social">Social Media</option>
-                <option value="gaming">Gaming</option>
+                <option value="gaming">Gaming & Streams</option>
                 <option value="news">News & Media</option>
-                <option value="adult">Adult</option>
-                <option value="custom">Custom</option>
+                <option value="custom">Custom / Other</option>
               </select>
             </div>
 
             <div className="md:col-span-2 flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="subdomains"
-                checked={includeSubdomains}
-                onChange={(e) => setIncludeSubdomains(e.target.checked)}
-                className="w-4 h-4 rounded text-sky-500 bg-slate-900 border-white/20 cursor-pointer"
-              />
-              <label htmlFor="subdomains" className="text-xs text-slate-300 cursor-pointer">
-                Subdomains
+              <label className="text-xs text-zinc-400 cursor-pointer flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={includeSubdomains}
+                  onChange={(e) => setIncludeSubdomains(e.target.checked)}
+                  className="rounded border-zinc-700 bg-zinc-900 accent-white w-4 h-4 cursor-pointer"
+                />
+                <span>Subdomains</span>
               </label>
             </div>
 
             <div className="md:col-span-2">
               <button type="submit" className="btn-primary w-full justify-center text-xs">
                 <Plus size={14} />
-                Add Domain
+                <span>Add Domain</span>
               </button>
             </div>
           </div>
         </form>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-72">
-          <Search size={14} className="absolute left-3 top-3 text-slate-400" />
+      {/* Search & Categories Bar */}
+      <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full md:w-80">
+          <Search size={14} className="absolute left-3.5 top-3 text-zinc-500" />
           <input
             type="text"
-            placeholder="Search domain..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="input-field pl-9 text-xs"
+            placeholder="Search domain rules..."
+            className="input-field pl-9"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+        <div className="flex items-center gap-1.5 p-1 rounded-lg bg-zinc-950 border border-white/10 w-full md:w-auto">
           {['all', 'social', 'entertainment', 'gaming', 'news', 'custom'].map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategoryFilter(cat)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all capitalize ${
+              className={`px-3 py-1.5 rounded text-xs font-mono uppercase transition-colors ${
                 selectedCategoryFilter === cat
-                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                  : 'bg-white/5 text-slate-400 hover:text-slate-200 border border-transparent'
+                  ? 'bg-white text-black font-bold'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               {cat}
@@ -198,135 +303,91 @@ export const WebsiteBlocker: React.FC<WebsiteBlockerProps> = ({
         </div>
       </div>
 
-      {/* Domains Table / List */}
-      <div className="glass-panel overflow-hidden">
+      {/* Domain Cards List */}
+      <div className="space-y-2">
         {filteredWebsites.length === 0 ? (
-          <div className="p-8 text-center space-y-2">
-            <Globe size={32} className="mx-auto text-slate-600" />
-            <p className="text-sm font-semibold text-slate-300">No websites found</p>
-            <p className="text-xs text-slate-500">
-              {websites.length === 0
-                ? 'Add distracting websites to start blocking.'
-                : 'No domains match your current filter.'}
-            </p>
+          <div className="p-12 text-center rounded-xl bg-zinc-950 border border-white/10">
+            <Globe size={36} className="mx-auto text-zinc-600 mb-3" />
+            <p className="text-sm font-semibold text-white">No domains in this category</p>
+            <p className="text-xs text-zinc-500 mt-1">Add a new domain above to block distracting sites.</p>
           </div>
         ) : (
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-white/5 bg-slate-900/40 text-slate-400">
-                <th className="py-2.5 px-4 font-semibold">Domain</th>
-                <th className="py-2.5 px-4 font-semibold">Category</th>
-                <th className="py-2.5 px-4 font-semibold">Subdomains</th>
-                <th className="py-2.5 px-4 font-semibold">Status</th>
-                <th className="py-2.5 px-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {filteredWebsites.map((item) => (
-                <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-3 px-4 font-mono font-medium text-slate-200">
-                    {item.domain}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="capitalize px-2 py-0.5 rounded text-[10px] font-medium bg-white/5 text-slate-400 border border-white/10">
-                      {item.category}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-slate-400">
-                    {item.includeSubdomains ? (
-                      <span className="text-emerald-400 font-medium">Included (*.{item.domain})</span>
+          filteredWebsites.map((item) => (
+            <div
+              key={item.id}
+              className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-4 ${
+                item.enabled
+                  ? 'bg-zinc-900/90 border-white/30 shadow-md'
+                  : 'bg-zinc-950/60 border-white/5 hover:border-white/15'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={`w-9 h-9 rounded-lg flex items-center justify-center font-mono font-bold text-xs shrink-0 ${
+                    item.enabled ? 'bg-white text-black' : 'bg-zinc-900 text-zinc-500 border border-white/10'
+                  }`}
+                >
+                  {item.domain.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-white truncate font-mono">{item.domain}</span>
+                    {item.enabled ? (
+                      <span className="badge badge-blocked">BLOCKED</span>
                     ) : (
-                      <span className="text-slate-500">Exact only</span>
+                      <span className="badge badge-idle">OFF</span>
                     )}
-                  </td>
-                  <td className="py-3 px-4">
-                    <label className="switch">
-                      <input
-                        type="checkbox"
-                        checked={item.enabled}
-                        onChange={() => onToggleWebsite(item.id)}
-                      />
-                      <span className="slider"></span>
-                    </label>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={() => onRemoveWebsite(item.id)}
-                      className="w-7 h-7 rounded flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors ml-auto"
-                      title="Remove domain"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-mono text-zinc-500 mt-0.5">
+                    <span className="uppercase">{item.category}</span>
+                    {item.includeSubdomains && (
+                      <span className="text-[10px] text-zinc-400">• Wildcard *.subdomains</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <label className="switch">
+                  <input
+                    type="checkbox"
+                    checked={item.enabled}
+                    onChange={() => handleToggle(item.id)}
+                  />
+                  <span className="slider"></span>
+                </label>
+
+                <button
+                  onClick={() => handleRemove(item.id)}
+                  className="w-8 h-8 rounded flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/10 transition-colors"
+                  title="Remove domain"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))
         )}
       </div>
 
-      {/* Bulk Import Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="glass-panel max-w-lg w-full p-6 space-y-4 border border-sky-500/30">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                <Upload size={16} className="text-sky-400" />
-                Import Domains
-              </h3>
-              <button
-                onClick={() => setShowImportModal(false)}
-                className="text-slate-500 hover:text-slate-300"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-xs text-slate-400">
-              Paste a list of domains below, separated by newlines or commas:
-            </p>
-            <textarea
-              rows={6}
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              placeholder="youtube.com&#10;reddit.com&#10;instagram.com"
-              className="input-field font-mono text-xs w-full"
-            />
-            <div className="flex items-center justify-end gap-2">
-              <button onClick={() => setShowImportModal(false)} className="btn-secondary text-xs">
-                Cancel
-              </button>
-              <button onClick={handleImportSubmit} className="btn-primary text-xs">
-                Import Domains
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Preview Generated Hosts Entries Modal */}
+      {/* Inspect Hosts Rules Modal */}
       {showPreviewModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="glass-panel max-w-xl w-full p-6 space-y-4 border border-sky-500/30">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-                <FileCode size={16} className="text-sky-400" />
-                Generated Hosts File Rules Preview
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="w-full max-w-lg p-6 rounded-2xl bg-zinc-950 border border-white/20 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-bold text-base text-white font-mono">Live Hosts Rules</h3>
               <button
                 onClick={() => setShowPreviewModal(false)}
-                className="text-slate-500 hover:text-slate-300"
+                className="text-zinc-400 hover:text-white text-sm"
               >
-                ✕
+                Close
               </button>
             </div>
-            <p className="text-xs text-slate-400">
-              When a focus session starts, FocusGuard atomically inserts these entries into{' '}
-              <code className="text-sky-300">C:\Windows\System32\drivers\etc\hosts</code>, rerouting
-              both IPv4 and IPv6 traffic to loopback (127.0.0.1 and ::1).
+            <p className="text-xs text-zinc-400">
+              FocusGuard appends these local entries between protected markers in <code className="text-white font-mono">%SystemRoot%\System32\drivers\etc\hosts</code>:
             </p>
-            <div className="p-3 rounded-lg bg-slate-950 border border-white/10 font-mono text-[11px] text-slate-300 max-h-64 overflow-y-auto space-y-0.5">
-              <div className="text-slate-500"># BEGIN FOCUSGUARD BLOCK</div>
-              <div className="text-slate-500"># Automatically managed by FocusGuard</div>
+            <div className="p-3 rounded-lg bg-black border border-white/15 max-h-60 overflow-y-auto font-mono text-xs text-zinc-300 space-y-1">
+              <div className="text-zinc-600"># BEGIN FOCUSGUARD BLOCK</div>
               {websites
                 .filter((w) => w.enabled)
                 .map((w) => (
@@ -337,16 +398,37 @@ export const WebsiteBlocker: React.FC<WebsiteBlockerProps> = ({
                       <>
                         <div>127.0.0.1 www.{w.domain}</div>
                         <div>::1 www.{w.domain}</div>
-                        <div>127.0.0.1 m.{w.domain}</div>
                       </>
                     )}
                   </React.Fragment>
                 ))}
-              <div className="text-slate-500"># END FOCUSGUARD BLOCK</div>
+              <div className="text-zinc-600"># END FOCUSGUARD BLOCK</div>
             </div>
-            <div className="flex justify-end">
-              <button onClick={() => setShowPreviewModal(false)} className="btn-secondary text-xs">
-                Close Preview
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-zinc-950 border border-white/20 shadow-2xl space-y-4">
+            <div className="border-b border-white/10 pb-3">
+              <h3 className="font-bold text-base text-white">Import Domain List</h3>
+              <p className="text-xs text-zinc-400 mt-0.5">Paste domains separated by new lines or commas.</p>
+            </div>
+            <textarea
+              rows={6}
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder="tiktok.com&#10;reddit.com&#10;x.com"
+              className="input-field font-mono text-xs"
+            />
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button onClick={() => setShowImportModal(false)} className="btn-secondary text-xs">
+                Cancel
+              </button>
+              <button onClick={handleImportSubmit} className="btn-primary text-xs">
+                Import Domains
               </button>
             </div>
           </div>

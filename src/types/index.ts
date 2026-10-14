@@ -81,6 +81,15 @@ export interface RunningProcessInfo {
   windowTitle?: string;
 }
 
+export interface InstalledAppInfo {
+  id: string;
+  name: string;
+  executableName: string;
+  path?: string;
+  isBlocked: boolean;
+  isRunning?: boolean;
+}
+
 export interface BlockerStoreData {
   websites: BlockedWebsite[];
   apps: BlockedApp[];

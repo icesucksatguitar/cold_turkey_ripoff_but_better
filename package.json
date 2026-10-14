@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build:renderer": "vite build",
-    "build:electron": "tsc -p tsconfig.node.json",
+    "build:scripts": "powershell -NoProfile -Command \"if (!(Test-Path dist-electron\\scripts)) { New-Item -ItemType Directory -Path dist-electron\\scripts -Force }; Copy-Item electron\\scripts\\* dist-electron\\scripts\\ -Force -Recurse\"",
+    "build:electron": "tsc -p tsconfig.node.json && npm run build:scripts",
     "build": "npm run build:renderer && npm run build:electron",
     "start": "electron .",
     "electron:dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
@@ -29,6 +30,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.10.1",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
@@ -36,6 +38,7 @@
     "concurrently": "^9.1.2",
     "electron": "^35.0.0",
     "electron-builder": "^26.0.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.8.2",
     "vite": "^6.2.0",
     "wait-on": "^8.0.2"
