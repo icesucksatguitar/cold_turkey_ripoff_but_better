@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, Notification, dialog } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { BlockerStore } from './store';
 import { AppBlocker } from './blocker/appBlocker';
 import { WebBlocker } from './blocker/webBlocker';
@@ -166,13 +167,13 @@ function createWindow() {
   });
 
   // Load URL or build file
-  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-  if (isDev && process.env.VITE_DEV_SERVER_URL) {
+  const distHtmlPath = path.join(__dirname, '../dist/index.html');
+  if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-  } else if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+  } else if (fs.existsSync(distHtmlPath)) {
+    mainWindow.loadFile(distHtmlPath);
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadURL('http://localhost:5173');
   }
 
   mainWindow.once('ready-to-show', () => {
