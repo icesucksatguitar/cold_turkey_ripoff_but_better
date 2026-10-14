@@ -1,0 +1,43 @@
+{
+  "name": "focusguard",
+  "version": "1.0.0",
+  "description": "Local Windows Productivity Blocker - Native process and website focus manager",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p tsconfig.node.json",
+    "build": "npm run build:renderer && npm run build:electron",
+    "start": "electron .",
+    "electron:dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "pack:win": "npm run build && electron-builder --win --dir",
+    "dist:win": "npm run build && electron-builder --win",
+    "test": "node --test dist-electron/tests/*.test.js"
+  },
+  "keywords": [
+    "productivity",
+    "blocker",
+    "focus",
+    "windows",
+    "coldturkey"
+  ],
+  "author": "FocusGuard Team",
+  "license": "MIT",
+  "dependencies": {
+    "lucide-react": "^1.16.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "concurrently": "^9.1.2",
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0",
+    "wait-on": "^8.0.2"
+  }
+}
