@@ -21,6 +21,7 @@ export const App: React.FC = () => {
           <Dashboard
             data={store.data}
             remainingSeconds={store.remainingSeconds}
+            currentActivity={store.currentActivity}
             onStartSession={store.startSession}
             onPauseSession={store.pauseSession}
             onResumeSession={store.resumeSession}
@@ -64,6 +65,7 @@ export const App: React.FC = () => {
           <FocusSessionPage
             activeSession={store.data.activeSession}
             remainingSeconds={store.remainingSeconds}
+            currentActivity={store.currentActivity}
             onStartSession={store.startSession}
             onStopSession={() => store.stopSession(false)}
             onNavigateTab={(tab) => setCurrentTab(tab)}

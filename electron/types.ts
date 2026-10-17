@@ -44,12 +44,20 @@ export interface ActiveSession {
   blockWebsites: boolean;
   blockApps: boolean;
   source: 'manual' | 'schedule';
+  pwLectureMode?: boolean;
+  isOnBreak?: boolean;
+  currentBreakSeconds?: number;
+  totalBreakSeconds?: number;
+  breakCount?: number;
+  currentActivity?: 'physics_wallah' | 'ai_assistant' | 'break' | 'neutral';
+  activeWindowTitle?: string;
+  activeProcessName?: string;
 }
 
 export interface ActivityLog {
   id: string;
   timestamp: number;
-  type: 'app_blocked' | 'website_blocked' | 'session_start' | 'session_end' | 'schedule_trigger' | 'emergency_unlock' | 'system';
+  type: 'app_blocked' | 'website_blocked' | 'session_start' | 'session_end' | 'schedule_trigger' | 'emergency_unlock' | 'break_start' | 'break_end' | 'system';
   target: string;
   details: string;
 }
@@ -63,6 +71,19 @@ export interface AppSettings {
   hostsBlockMethod: 'hosts_file' | 'loopback';
   theme: 'dark' | 'midnight' | 'slate';
   emergencyPhraseLength: number; // default 32
+  pwLectureModeDefault: boolean; // default true
+  notifyOnBreak: boolean; // default true
+}
+
+export interface WindowActivity {
+  pid: number;
+  process: string;
+  title: string;
+  url: string;
+  isPw: boolean;
+  isAi: boolean;
+  isSelf: boolean;
+  isDesktop: boolean;
 }
 
 export interface SystemStatus {

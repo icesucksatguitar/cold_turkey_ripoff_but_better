@@ -153,6 +153,13 @@ async function initApp() {
     },
   });
 
+  // Activity tracker hook for live UI display
+  scheduler.getActivityTracker().addListener((activity) => {
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && !mainWindow.isMinimized()) {
+      mainWindow.webContents.send('activity:changed', activity);
+    }
+  });
+
   // Initialize background scheduler and adaptive app blocker
   await scheduler.init();
   appBlocker.start(1200);
@@ -437,6 +444,11 @@ function setupIpcHandlers() {
       isConfigured: webBlocker.isBlockActiveInHosts(),
       canWriteDirectly: webBlocker.hasDirectWriteAccess(),
     };
+  });
+
+  // Physics Wallah & Window Activity Tracker
+  ipcMain.handle('activity:getCurrent', () => {
+    return scheduler.getActivityTracker().getLatestActivity();
   });
 
   // Window controls

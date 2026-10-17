@@ -24,6 +24,7 @@ const api = {
     blockWebsites: boolean;
     blockApps: boolean;
     preset?: string;
+    pwLectureMode?: boolean;
   }): Promise<ActiveSession> => ipcRenderer.invoke('session:start', params),
 
   pauseSession: (): Promise<boolean> => ipcRenderer.invoke('session:pause'),
@@ -43,6 +44,10 @@ const api = {
     ipcRenderer.invoke('hosts:restore'),
   checkHostsStatus: (): Promise<{ isConfigured: boolean; canWriteDirectly: boolean }> =>
     ipcRenderer.invoke('hosts:check'),
+
+  // Physics Wallah & Window Activity Tracker
+  getCurrentActivity: (): Promise<import('./types').WindowActivity | null> =>
+    ipcRenderer.invoke('activity:getCurrent'),
 
   // Window Controls
   minimizeWindow: () => ipcRenderer.send('window:minimize'),
@@ -64,6 +69,13 @@ const api = {
     const handler = (_event: Electron.IpcRendererEvent, session: ActiveSession | null) => callback(session);
     ipcRenderer.on('scheduler:sessionUpdated', handler);
     return () => ipcRenderer.removeListener('scheduler:sessionUpdated', handler);
+  },
+
+  onActivityChanged: (callback: (activity: import('./types').WindowActivity) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, act: import('./types').WindowActivity) =>
+      callback(act);
+    ipcRenderer.on('activity:changed', handler);
+    return () => ipcRenderer.removeListener('activity:changed', handler);
   },
 
   onProcessBlocked: (callback: (info: { app: BlockedApp; pid: number; attempt: number }) => void) => {

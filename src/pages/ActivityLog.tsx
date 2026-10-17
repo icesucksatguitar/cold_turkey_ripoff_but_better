@@ -9,6 +9,9 @@ import {
   Info,
   Trash2,
   Search,
+  Coffee,
+  Play,
+  Pause,
 } from 'lucide-react';
 import { ActivityLog as ActivityLogType } from '../types';
 
@@ -31,6 +34,7 @@ export const ActivityLogPage: React.FC<ActivityLogProps> = ({ logs, onClearLogs 
     if (filterType === 'all') return true;
     if (filterType === 'blocked') return log.type === 'app_blocked' || log.type === 'website_blocked';
     if (filterType === 'sessions') return log.type === 'session_start' || log.type === 'session_end';
+    if (filterType === 'breaks') return log.type === 'break_start' || log.type === 'break_end';
     if (filterType === 'system') return log.type === 'system' || log.type === 'schedule_trigger';
     return true;
   });
@@ -43,6 +47,10 @@ export const ActivityLogPage: React.FC<ActivityLogProps> = ({ logs, onClearLogs 
         return <PlayCircle size={14} className="text-white" />;
       case 'session_end':
         return <CheckCircle size={14} className="text-white" />;
+      case 'break_start':
+        return <Coffee size={14} className="text-amber-400" />;
+      case 'break_end':
+        return <Play size={14} className="text-emerald-400" />;
       case 'schedule_trigger':
         return <Calendar size={14} className="text-white" />;
       case 'emergency_unlock':
@@ -104,6 +112,7 @@ export const ActivityLogPage: React.FC<ActivityLogProps> = ({ logs, onClearLogs 
             { id: 'all', label: 'All Events' },
             { id: 'blocked', label: 'Interceptions' },
             { id: 'sessions', label: 'Sessions' },
+            { id: 'breaks', label: 'Breaks' },
             { id: 'system', label: 'System' },
           ].map((f) => (
             <button

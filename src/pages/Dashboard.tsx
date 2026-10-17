@@ -12,12 +12,17 @@ import {
   Lock,
   AlertTriangle,
   RotateCcw,
+  Coffee,
+  GraduationCap,
+  Bot,
+  Sparkles,
 } from 'lucide-react';
-import { ActiveSession, BlockerStoreData, StrictModeLevel } from '../types';
+import { ActiveSession, BlockerStoreData, StrictModeLevel, WindowActivity } from '../types';
 
 interface DashboardProps {
   data: BlockerStoreData;
   remainingSeconds: number;
+  currentActivity?: WindowActivity | null;
   onStartSession: (params: {
     name: string;
     durationMinutes: number;
@@ -25,6 +30,7 @@ interface DashboardProps {
     blockWebsites: boolean;
     blockApps: boolean;
     preset?: string;
+    pwLectureMode?: boolean;
   }) => void;
   onPauseSession: () => void;
   onResumeSession: () => void;
@@ -35,6 +41,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({
   data,
   remainingSeconds,
+  currentActivity,
   onStartSession,
   onPauseSession,
   onResumeSession,
@@ -124,8 +131,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   cx="50"
                   cy="50"
                   r="42"
-                  className="transition-all duration-1000 ease-linear timer-glow"
-                  stroke="#ffffff"
+                  className={`transition-all duration-1000 ease-linear ${session?.isOnBreak ? 'stroke-amber-400' : 'timer-glow stroke-white'}`}
                   strokeWidth="4.5"
                   strokeDasharray={264}
                   strokeDashoffset={264 - (264 * progressPercent) / 100}
@@ -135,18 +141,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </svg>
 
               {/* Inside Digital Timer */}
-              <div className="absolute flex flex-col items-center text-center">
-                <span className="font-mono text-4xl font-extrabold tracking-tight text-white">
-                  {isFocusing ? formatTime(remainingSeconds) : '00:00'}
-                </span>
-                <span className="text-[10px] font-mono font-bold tracking-widest text-zinc-400 mt-1 uppercase">
-                  {isFocusing ? (isPaused ? 'PAUSED' : session.name) : 'STANDBY'}
-                </span>
-                {isStrict && (
-                  <span className="mt-1 flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-white text-black">
-                    <Lock size={9} />
-                    STRICT
-                  </span>
+              <div className="absolute flex flex-col items-center text-center px-4">
+                {session?.isOnBreak ? (
+                  <>
+                    <span className="font-mono text-3xl font-extrabold tracking-tight text-amber-400 animate-pulse">
+                      {formatTime(session.currentBreakSeconds || 0)}
+                    </span>
+                    <span className="text-[9px] font-mono font-bold tracking-widest text-amber-300 mt-1 uppercase">
+                      BREAK ACTIVE
+                    </span>
+                    <span className="text-[9px] font-mono text-zinc-400 mt-0.5">
+                      {formatTime(remainingSeconds)} left (paused)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-mono text-4xl font-extrabold tracking-tight text-white">
+                      {isFocusing ? formatTime(remainingSeconds) : '00:00'}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold tracking-widest text-zinc-400 mt-1 uppercase truncate max-w-[140px]">
+                      {isFocusing ? (isPaused ? 'PAUSED' : session.name) : 'STANDBY'}
+                    </span>
+                    {isStrict && (
+                      <span className="mt-1 flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-white text-black">
+                        <Lock size={9} />
+                        STRICT
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -178,18 +200,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <button
                   onClick={() =>
                     onStartSession({
-                      name: 'Deep Work',
-                      durationMinutes: 50,
+                      name: 'PW Lecture Focus',
+                      durationMinutes: 60,
                       strictMode: 'locked',
                       blockWebsites: true,
                       blockApps: true,
-                      preset: 'Deep Work',
+                      preset: 'PW Lecture Focus',
+                      pwLectureMode: true,
                     })
                   }
                   className="btn-primary"
                 >
-                  <Play size={13} fill="currentColor" />
-                  <span>Start 50m Deep Work</span>
+                  <GraduationCap size={14} />
+                  <span>Start 60m PW Lecture Focus</span>
                 </button>
               )}
             </div>
@@ -206,16 +229,54 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 Quick Focus Presets
               </h2>
               <p className="text-xs text-zinc-400 mt-0.5">
-                Immediate system-wide app and website restriction for uninterrupted flow.
+                Immediate system-wide app and website restriction with smart lecture tracking.
               </p>
             </div>
 
+            {/* If on break during session, show prominent off-task banner */}
+            {session?.isOnBreak && (
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs font-mono space-y-1.5 animate-pulse">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold flex items-center gap-1.5 text-amber-300">
+                    <Pause size={13} />
+                    Off-Task Break in Progress
+                  </span>
+                  <span className="text-[10px] text-amber-400 font-bold">
+                    Break #{session.breakCount || 1} • Total {formatTime(session.totalBreakSeconds || 0)}
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-200/80">
+                  Switched away to &quot;{session.activeWindowTitle || session.activeProcessName || 'Off-task window'}&quot;. Focus timer is paused. Switch back to Physics Wallah (or ChatGPT / Claude / Gemini) to resume.
+                </p>
+              </div>
+            )}
+
+            {/* If focusing in PW mode and NOT on break, show active focus confirmation */}
+            {isFocusing && session?.pwLectureMode && !session?.isOnBreak && (
+              <div className="p-3 rounded-xl bg-zinc-900 border border-white/10 text-xs font-mono flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {session.currentActivity === 'ai_assistant' ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                      <span className="text-indigo-300 font-bold">AI Study Assistant Active (Focusing)</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className="text-emerald-300 font-bold">Watching Physics Wallah (Active Focus)</span>
+                    </>
+                  )}
+                </div>
+                <span className="text-[10px] text-zinc-500 font-bold">TIMER RUNNING</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-2.5">
               {[
-                { name: 'Pomodoro Sprint', mins: 25, strict: 'none' as StrictModeLevel, desc: 'Casual sprint with break' },
-                { name: 'Deep Work Flow', mins: 50, strict: 'locked' as StrictModeLevel, desc: 'Locked focus block' },
-                { name: 'Study Marathon', mins: 90, strict: 'locked' as StrictModeLevel, desc: 'Extended focus block' },
-                { name: 'Iron Discipline', mins: 120, strict: 'extreme' as StrictModeLevel, desc: 'Strict verification lock' },
+                { name: 'PW Lecture Flow', mins: 60, strict: 'locked' as StrictModeLevel, desc: 'Physics Wallah lecture + AI assist', pw: true },
+                { name: 'PW Marathon', mins: 90, strict: 'locked' as StrictModeLevel, desc: 'Extended PW study block', pw: true },
+                { name: 'Pomodoro Sprint', mins: 25, strict: 'none' as StrictModeLevel, desc: 'Casual sprint with break', pw: false },
+                { name: 'Deep Work Flow', mins: 50, strict: 'locked' as StrictModeLevel, desc: 'Locked focus block', pw: false },
               ].map((preset) => (
                 <div
                   key={preset.name}
@@ -228,6 +289,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         blockWebsites: true,
                         blockApps: true,
                         preset: preset.name,
+                        pwLectureMode: preset.pw,
                       });
                     }
                   }}
@@ -238,7 +300,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-xs text-white">{preset.name}</span>
+                    <span className="font-semibold text-xs text-white flex items-center gap-1">
+                      {preset.name}
+                      {preset.pw && <GraduationCap size={12} className="text-zinc-400" />}
+                    </span>
                     <span className="font-mono text-xs text-white font-bold">{preset.mins}m</span>
                   </div>
                   <div className="text-[11px] text-zinc-500 mt-1">{preset.desc}</div>

@@ -14,6 +14,9 @@ import {
   HelpCircle,
   Check,
   Zap,
+  GraduationCap,
+  Bot,
+  Coffee,
 } from 'lucide-react';
 import { AppSettings } from '../types';
 
@@ -155,6 +158,57 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               />
               <span className="slider"></span>
             </label>
+          </div>
+        </div>
+
+        {/* Physics Wallah & AI Lecture Focus Configuration */}
+        <div className="p-5 rounded-2xl bg-zinc-950 border border-white/10 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm text-white font-mono uppercase tracking-wider flex items-center gap-2">
+              <GraduationCap size={16} className="text-white" />
+              Physics Wallah & AI Focus
+            </h3>
+            <span className="badge badge-active text-[10px]">SMART DETECTION</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-semibold text-white">Enable PW Detection by Default</div>
+              <div className="text-[11px] text-zinc-500">Auto-detect pw.live & PW video lectures</div>
+            </div>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={settings.pwLectureModeDefault ?? true}
+                onChange={(e) => onUpdateSettings({ pwLectureModeDefault: e.target.checked })}
+              />
+              <span className="slider"></span>
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-semibold text-white">Break Start Notification</div>
+              <div className="text-[11px] text-zinc-500">Alert when switched away to an off-task tab</div>
+            </div>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={settings.notifyOnBreak ?? true}
+                onChange={(e) => onUpdateSettings({ notifyOnBreak: e.target.checked })}
+              />
+              <span className="slider"></span>
+            </label>
+          </div>
+
+          <div className="p-3 rounded-xl bg-black border border-white/10 space-y-2 text-[11px] font-mono text-zinc-400">
+            <div className="text-white font-bold flex items-center gap-1.5 text-xs">
+              <Bot size={13} className="text-indigo-400" />
+              Allowed AI Study Assistants:
+            </div>
+            <p className="text-zinc-500 leading-relaxed">
+              ChatGPT (chatgpt.com), Claude (claude.ai), and Google Gemini (gemini.google.com) keep focus timer running. All other tabs stop the timer and count as breaks.
+            </p>
           </div>
         </div>
 

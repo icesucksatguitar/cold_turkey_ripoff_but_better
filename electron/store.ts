@@ -20,6 +20,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   hostsBlockMethod: 'hosts_file',
   theme: 'midnight',
   emergencyPhraseLength: 32,
+  pwLectureModeDefault: true,
+  notifyOnBreak: true,
 };
 
 const DEFAULT_WEBSITES: BlockedWebsite[] = [

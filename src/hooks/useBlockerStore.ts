@@ -65,6 +65,8 @@ const INITIAL_FALLBACK_DATA: BlockerStoreData = {
     hostsBlockMethod: 'hosts_file',
     theme: 'midnight',
     emergencyPhraseLength: 32,
+    pwLectureModeDefault: true,
+    notifyOnBreak: true,
   },
 };
 
@@ -73,6 +75,7 @@ export function useBlockerStore() {
   const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [currentActivity, setCurrentActivity] = useState<import('../types').WindowActivity | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -113,14 +116,24 @@ export function useBlockerStore() {
         }
       });
 
+      const unsubActivity = window.focusGuardApi.onActivityChanged?.((act) => {
+        setCurrentActivity(act);
+      });
+
       const unsubBlocked = window.focusGuardApi.onProcessBlocked((info) => {
         showToast(`Intercepted ${info.app.name} (${info.pid}) - Attempt #${info.attempt}`);
         refreshConfig();
       });
 
+      // Query current activity immediately
+      window.focusGuardApi.getCurrentActivity?.().then((act) => {
+        if (act) setCurrentActivity(act);
+      }).catch(() => {});
+
       return () => {
         unsubTick();
         unsubSession();
+        if (unsubActivity) unsubActivity();
         unsubBlocked();
       };
     }
@@ -325,6 +338,7 @@ export function useBlockerStore() {
     blockWebsites: boolean;
     blockApps: boolean;
     preset?: string;
+    pwLectureMode?: boolean;
   }) => {
     if (window.focusGuardApi) {
       try {
@@ -349,6 +363,12 @@ export function useBlockerStore() {
         blockApps: params.blockApps,
         preset: params.preset,
         source: 'manual',
+        pwLectureMode: params.pwLectureMode ?? true,
+        isOnBreak: false,
+        currentBreakSeconds: 0,
+        totalBreakSeconds: 0,
+        breakCount: 0,
+        currentActivity: 'physics_wallah',
       };
       setData((prev) => ({ ...prev, activeSession: mockSession }));
       setRemainingSeconds(params.durationMinutes * 60);
@@ -399,6 +419,7 @@ export function useBlockerStore() {
     data,
     isLoading,
     remainingSeconds,
+    currentActivity,
     toastMessage,
     showToast,
     refreshConfig,

@@ -126,4 +126,118 @@ describe('Scheduler Strict Mode & Session Engine', () => {
     scheduler.stopClock();
     appBlocker.stop();
   });
+
+  it('stops focus timer and starts break when switching away from Physics Wallah to non-AI window, and resumes on return', async () => {
+    const mockTracker: any = {
+      currentAct: {
+        pid: 100,
+        process: 'chrome',
+        title: 'Physics Wallah | Online Courses & Batches',
+        url: 'https://study.pw.live/batch/123',
+        isPw: true,
+        isAi: false,
+        isSelf: false,
+        isDesktop: false,
+      },
+      getLatestActivity() {
+        return this.currentAct;
+      },
+      start() {},
+      stop() {},
+      addListener() { return () => {}; },
+    };
+
+    const pwScheduler = new Scheduler(store, appBlocker, webBlocker, mockTracker);
+
+    await pwScheduler.startSession({
+      name: 'PW Physics Study',
+      durationMinutes: 45,
+      strictMode: 'none',
+      blockWebsites: false,
+      blockApps: false,
+      pwLectureMode: true,
+    });
+
+    const session = pwScheduler.getActiveSession()!;
+    assert.ok(session);
+    assert.strictEqual(session.pwLectureMode, true);
+    assert.strictEqual(session.isOnBreak, false);
+
+    // Initial tick on Physics Wallah: focus timer runs, no break
+    const initialEndTime = session.endTime;
+    await (pwScheduler as any).tick();
+    assert.strictEqual(session.isOnBreak, false);
+    assert.strictEqual(session.currentActivity, 'physics_wallah');
+    assert.strictEqual(session.currentBreakSeconds, 0);
+
+    // User switches to ChatGPT (allowed AI assistant) -> timer continues, NOT a break
+    mockTracker.currentAct = {
+      pid: 101,
+      process: 'chrome',
+      title: 'Newton Laws of Motion - ChatGPT',
+      url: 'https://chatgpt.com',
+      isPw: false,
+      isAi: true,
+      isSelf: false,
+      isDesktop: false,
+    };
+    await (pwScheduler as any).tick();
+    assert.strictEqual(session.isOnBreak, false);
+    assert.strictEqual(session.currentActivity, 'ai_assistant');
+    assert.strictEqual(session.currentBreakSeconds, 0);
+
+    // User switches to Discord / Reddit / Twitter (distraction / off-task) -> BREAK STARTS! Focus timer stops!
+    mockTracker.currentAct = {
+      pid: 102,
+      process: 'Discord',
+      title: 'Gaming Voice Chat #general',
+      url: '',
+      isPw: false,
+      isAi: false,
+      isSelf: false,
+      isDesktop: false,
+    };
+    const endTimeBeforeBreak = session.endTime;
+    await (pwScheduler as any).tick();
+
+    // Session must be in break mode
+    assert.strictEqual(session.isOnBreak, true);
+    assert.strictEqual(session.currentActivity, 'break');
+    assert.strictEqual(session.breakCount, 1);
+    assert.strictEqual(session.currentBreakSeconds, 1);
+    assert.strictEqual(session.totalBreakSeconds, 1);
+    // Focus timer was frozen by extending endTime by 1000ms
+    assert.strictEqual(session.endTime, endTimeBeforeBreak + 1000);
+
+    // Another second on Discord -> break timer increments, focus timer stays stopped
+    await (pwScheduler as any).tick();
+    assert.strictEqual(session.currentBreakSeconds, 2);
+    assert.strictEqual(session.totalBreakSeconds, 2);
+    assert.strictEqual(session.endTime, endTimeBeforeBreak + 2000);
+
+    // User switches BACK to Physics Wallah lecture -> BREAK ENDS, FOCUS TIMER RESUMES!
+    mockTracker.currentAct = {
+      pid: 100,
+      process: 'chrome',
+      title: 'Rotational Motion Lecture 02 - Physics Wallah',
+      url: 'https://www.pw.live',
+      isPw: true,
+      isAi: false,
+      isSelf: false,
+      isDesktop: false,
+    };
+    const endTimeAtResume = session.endTime;
+    await (pwScheduler as any).tick();
+
+    assert.strictEqual(session.isOnBreak, false);
+    assert.strictEqual(session.currentActivity, 'physics_wallah');
+    assert.strictEqual(session.currentBreakSeconds, 0);
+    assert.strictEqual(session.totalBreakSeconds, 2); // Preserves accumulated break time
+    // Timer is active again, endTime is not extended
+    assert.strictEqual(session.endTime, endTimeAtResume);
+
+    await pwScheduler.stopSession(true);
+    pwScheduler.stopClock();
+    appBlocker.stop();
+  });
 });

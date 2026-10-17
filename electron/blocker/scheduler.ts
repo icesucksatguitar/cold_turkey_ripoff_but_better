@@ -2,6 +2,7 @@ import { ActiveSession, FocusSchedule, StrictModeLevel } from '../types';
 import { BlockerStore } from '../store';
 import { AppBlocker } from './appBlocker';
 import { WebBlocker } from './webBlocker';
+import { WindowActivityTracker } from './windowTracker';
 
 export interface SchedulerEvents {
   onSessionUpdated: (session: ActiveSession | null) => void;
@@ -13,18 +14,29 @@ export class Scheduler {
   private store: BlockerStore;
   private appBlocker: AppBlocker;
   private webBlocker: WebBlocker;
+  private activityTracker: WindowActivityTracker;
   private timer: NodeJS.Timeout | null = null;
   private events?: SchedulerEvents;
   private lastCheckedMinute = -1;
 
-  constructor(store: BlockerStore, appBlocker: AppBlocker, webBlocker: WebBlocker) {
+  constructor(
+    store: BlockerStore,
+    appBlocker: AppBlocker,
+    webBlocker: WebBlocker,
+    activityTracker?: WindowActivityTracker
+  ) {
     this.store = store;
     this.appBlocker = appBlocker;
     this.webBlocker = webBlocker;
+    this.activityTracker = activityTracker || new WindowActivityTracker();
   }
 
   public setEvents(events: SchedulerEvents) {
     this.events = events;
+  }
+
+  public getActivityTracker(): WindowActivityTracker {
+    return this.activityTracker;
   }
 
   /**
@@ -72,6 +84,7 @@ export class Scheduler {
       clearInterval(this.timer);
       this.timer = null;
     }
+    this.activityTracker.stop();
   }
 
   /**
@@ -92,11 +105,107 @@ export class Scheduler {
         return;
       }
 
+      // Physics Wallah Lecture Mode handling:
+      // If user is watching PW lecture / on PW site: Focus timer runs.
+      // If user switches to ChatGPT, Claude, or Gemini: Focus timer continues running (AI assistant allowed).
+      // If user switches to ANYTHING ELSE: Focus timer STOPS and counts as a break until user switches back!
+      if (session.pwLectureMode) {
+        const activity = this.activityTracker.getLatestActivity();
+        if (activity) {
+          if (activity.isPw) {
+            // User is actively on Physics Wallah!
+            if (session.isOnBreak) {
+              const breakSecs = session.currentBreakSeconds || 0;
+              const breakM = Math.floor(breakSecs / 60);
+              const breakS = breakSecs % 60;
+              const durStr = breakM > 0 ? `${breakM}m ${breakS}s` : `${breakS}s`;
+
+              this.store.addLog(
+                'break_end',
+                'Physics Wallah',
+                `Returned to Physics Wallah after ${durStr} break. Focus timer resumed.`
+              );
+              session.isOnBreak = false;
+              session.currentBreakSeconds = 0;
+
+              if (this.events) {
+                this.events.onNotificationRequest(
+                  'Focus Resumed 🎯',
+                  `Back on Physics Wallah! Focus timer is running again.`
+                );
+              }
+            }
+            session.currentActivity = 'physics_wallah';
+            session.activeWindowTitle = activity.title;
+            session.activeProcessName = activity.process;
+          } else if (activity.isAi) {
+            // User is using ChatGPT, Claude, or Gemini (allowed study assistant)
+            if (session.isOnBreak) {
+              const breakSecs = session.currentBreakSeconds || 0;
+              const breakM = Math.floor(breakSecs / 60);
+              const breakS = breakSecs % 60;
+              const durStr = breakM > 0 ? `${breakM}m ${breakS}s` : `${breakS}s`;
+
+              this.store.addLog(
+                'break_end',
+                activity.title || activity.process,
+                `Switched to AI assistant after ${durStr} break. Focus timer resumed.`
+              );
+              session.isOnBreak = false;
+              session.currentBreakSeconds = 0;
+            }
+            session.currentActivity = 'ai_assistant';
+            session.activeWindowTitle = activity.title;
+            session.activeProcessName = activity.process;
+          } else if (activity.isSelf) {
+            // FocusGuard window itself is neutral (allows user to check timer/stats)
+            session.currentActivity = session.currentActivity || 'neutral';
+          } else {
+            // Off-task window/tab: NOT Physics Wallah and NOT AI -> COUNT AS BREAK & STOP FOCUS TIMER
+            if (!session.isOnBreak) {
+              session.isOnBreak = true;
+              session.breakCount = (session.breakCount || 0) + 1;
+              session.currentBreakSeconds = 0;
+
+              const target = activity.title || activity.process || 'Off-task window';
+              this.store.addLog(
+                'break_start',
+                target,
+                `Switched away from Physics Wallah to "${target}". Focus timer stopped, break active.`
+              );
+
+              const shouldNotify = data.settings.notifyOnBreak ?? true;
+              if (shouldNotify && this.events) {
+                const titleSnippet = activity.title
+                  ? activity.title.slice(0, 35) + (activity.title.length > 35 ? '...' : '')
+                  : activity.process;
+                this.events.onNotificationRequest(
+                  'Off-Task Break Started ⏸️',
+                  `Switched to ${titleSnippet}. Focus timer paused until you return to Physics Wallah or AI.`
+                );
+              }
+            }
+
+            session.currentActivity = 'break';
+            session.activeWindowTitle = activity.title;
+            session.activeProcessName = activity.process;
+
+            // Increment break time counters
+            session.currentBreakSeconds = (session.currentBreakSeconds || 0) + 1;
+            session.totalBreakSeconds = (session.totalBreakSeconds || 0) + 1;
+
+            // Freeze focus countdown by extending endTime by 1000ms
+            session.endTime += 1000;
+          }
+        }
+      }
+
       const diffMs = session.endTime - now;
       const remainingSec = Math.max(0, Math.round(diffMs / 1000));
 
       if (this.events) {
         this.events.onTimeTick(remainingSec);
+        this.events.onSessionUpdated(session);
       }
 
       if (diffMs <= 0) {
@@ -169,10 +278,17 @@ export class Scheduler {
     blockApps: boolean;
     preset?: string;
     source?: 'manual' | 'schedule';
+    pwLectureMode?: boolean;
   }): Promise<ActiveSession> {
     const now = Date.now();
     const durationMs = params.durationMinutes * 60 * 1000;
     const endTime = now + durationMs;
+
+    const data = this.store.getData();
+    const pwLectureMode =
+      params.pwLectureMode !== undefined
+        ? params.pwLectureMode
+        : (data.settings.pwLectureModeDefault ?? true);
 
     const session: ActiveSession = {
       id: `session-${now}`,
@@ -186,16 +302,25 @@ export class Scheduler {
       blockWebsites: params.blockWebsites,
       blockApps: params.blockApps,
       source: params.source || 'manual',
+      pwLectureMode,
+      isOnBreak: false,
+      currentBreakSeconds: 0,
+      totalBreakSeconds: 0,
+      breakCount: 0,
+      currentActivity: pwLectureMode ? 'physics_wallah' : undefined,
     };
 
-    const data = this.store.getData();
     data.activeSession = session;
     this.store.persist();
+
+    const modeDesc = pwLectureMode
+      ? ' (Physics Wallah lecture detection & AI assistant active)'
+      : '';
 
     this.store.addLog(
       'session_start',
       session.name,
-      `Focus session started for ${params.durationMinutes} minutes. Strict: ${params.strictMode}`
+      `Focus session started for ${params.durationMinutes} minutes. Strict: ${params.strictMode}${modeDesc}`
     );
 
     await this.enforceSessionStart(session);
@@ -226,6 +351,7 @@ export class Scheduler {
     // Temporarily disable blockers while paused
     this.appBlocker.stop();
     this.webBlocker.removeBlock().catch(() => {});
+    this.activityTracker.stop();
 
     if (this.events) {
       this.events.onSessionUpdated(session);
@@ -268,10 +394,16 @@ export class Scheduler {
       return false;
     }
 
+    const breakSummary = session.totalBreakSeconds
+      ? ` Total break: ${Math.round(session.totalBreakSeconds / 60)}m (${session.breakCount || 0} breaks).`
+      : '';
+
     this.store.addLog(
       overridePassword ? 'emergency_unlock' : 'session_end',
       session.name,
-      overridePassword ? 'Session ended via emergency unlock phrase.' : 'Session stopped early by user.'
+      overridePassword
+        ? `Session ended via emergency unlock phrase.${breakSummary}`
+        : `Session stopped early by user.${breakSummary}`
     );
 
     await this.enforceSessionStop();
@@ -291,7 +423,15 @@ export class Scheduler {
    * Natural session completion
    */
   private async completeSession(session: ActiveSession): Promise<void> {
-    this.store.addLog('session_end', session.name, `Session completed successfully (${session.durationMinutes}m)!`);
+    const breakSummary = session.totalBreakSeconds
+      ? ` Total break time: ${Math.round(session.totalBreakSeconds / 60)}m (${session.breakCount || 0} breaks).`
+      : '';
+
+    this.store.addLog(
+      'session_end',
+      session.name,
+      `Session completed successfully (${session.durationMinutes}m)!${breakSummary}`
+    );
 
     await this.enforceSessionStop();
 
@@ -318,6 +458,10 @@ export class Scheduler {
     if (session.blockWebsites) {
       await this.webBlocker.applyBlock(data.websites);
     }
+
+    if (session.pwLectureMode) {
+      this.activityTracker.start(900);
+    }
   }
 
   private async enforceSessionStop(): Promise<void> {
@@ -335,6 +479,8 @@ export class Scheduler {
     } else {
       await this.webBlocker.removeBlock();
     }
+
+    this.activityTracker.stop();
   }
 
   public getActiveSession(): ActiveSession | null {

@@ -29,11 +29,14 @@ focusguard/
 │   ├── scripts/
 │   │   ├── memtrim.cs       # C# Win32 kernel EmptyWorkingSet & fast process inspector
 │   │   ├── memtrim.exe      # Compiled native memory trimmer executable
+│   │   ├── windowTracker.cs # Native Win32 & UIAutomation active window/tab detector
+│   │   ├── windowTracker.exe # Compiled native foreground activity inspector
 │   │   └── getInstalledApps.ps1 # Fast installed application discovery
 │   ├── blocker/
 │   │   ├── appBlocker.ts    # Native process scanner & taskkill enforcement with adaptive burst
 │   │   ├── webBlocker.ts    # Atomic Windows hosts-file blocker with rollback
-│   │   └── scheduler.ts     # 1-second clock, recurring schedules, strict mode lock
+│   │   ├── windowTracker.ts # Background window tracker process manager & activity emitter
+│   │   └── scheduler.ts     # 1-second clock, recurring schedules, PW break tracking, strict lock
 │   └── tests/
 │       └── blocker.test.ts  # Node.js automated test suite
 ├── src/                     # React 19 + Vite Desktop Interface
@@ -121,11 +124,30 @@ npm start
 
 ### Focus Presets & Custom Duration
 - Quick start with 1-click presets:
+  - **PW Lecture Focus**: 60 min focus with Physics Wallah tracking enabled
   - **Pomodoro Sprint**: 25 min focus
   - **Deep Work Flow**: 50 min focus
   - **Study Marathon**: 90 min focus
   - **Ultra Focus**: 120 min focus
 - Or adjust the custom slider from **5 to 240 minutes**.
+
+### Physics Wallah (PW) Lecture Mode & AI Break Tracking
+FocusGuard features a dedicated study detection engine designed for students watching Physics Wallah lectures:
+1. **Active Lecture & Tab Detection**:
+   - Uses a native Windows background tracker (`electron/scripts/windowTracker.cs` / `windowTracker.exe`) combining Win32 `GetForegroundWindow()` with Windows UIAutomation toolbar/address bar inspection.
+   - Detects all official PW web domains (`pw.live`, `study.pw.live`, `physicswallah.live`, `physicswallah.com`, `pwskills.com`) as well as PW video lectures across Chrome, Edge, Brave, Opera, and Firefox.
+2. **AI Study Assistant Whitelist**:
+   - Switching to allowed AI tools (**ChatGPT**, **Claude**, or **Gemini**) for doubt-clearing or problem explanation is recognized as valid study assistance.
+   - The focus timer continues running without interruption and is **never** counted as a break.
+3. **Automatic Break Pausing & Off-Task Detection**:
+   - If you switch away from Physics Wallah to any non-study, non-AI window or browser tab (e.g., YouTube, Reddit, Discord, Games, or other websites), FocusGuard immediately:
+     - **Freezes the Focus Countdown Timer**: Your study timer stops counting down.
+     - **Starts a Break Stopwatch**: Begins tracking your off-task break duration (`currentBreakSeconds`).
+     - **Accumulates Total Break Time**: Accurately records break count and total break time across the session.
+     - **Logs Forensic Audit Events**: Records `break_start` and `break_end` timestamps in the Activity Log.
+     - **Sends Windows Notifications**: Alerts you when an off-task break begins and when your focus session resumes upon switching back.
+4. **Instant Resume**:
+   - The moment you switch back to your Physics Wallah tab/video, the break stopwatch stops, the focus countdown seamlessly resumes, and your session stats update live.
 
 ### Strict Focus Mode Levels
 - **Standard (Casual)**: You can pause or stop the session anytime.
@@ -198,15 +220,15 @@ FocusGuard uses `electron-builder` to produce reproducible Windows installers:
 ```powershell
 npm run pack:win
 ```
-Outputs unpacked desktop binary in `release/win-unpacked/FocusGuard.exe`.
+Outputs unpacked desktop binary in `release-build/win-unpacked/FocusGuard.exe`.
 
 ### Build Windows Installer & Portable Executable
 ```powershell
 npm run dist:win
 ```
 Outputs:
-- **`release/FocusGuard-Setup-1.0.0.exe`**: Full NSIS installer with desktop shortcut and uninstaller.
-- **`release/FocusGuard-1.0.0.exe`**: Standalone portable Windows executable.
+- **`release-build/FocusGuard Setup 1.1.0.exe`**: Full NSIS installer with desktop shortcut and uninstaller.
+- **`release-build/FocusGuard 1.1.0.exe`**: Standalone portable Windows executable.
 
 ---
 
